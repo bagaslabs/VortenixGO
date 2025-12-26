@@ -1,0 +1,8 @@
+-- File: scripts/example.lua
+-- Deskripsi:
+-- Ini adalah contoh script Lua yang akan dieksekusi oleh Bot.
+-- Setiap bot memiliki instance Lua sendiri.
+-- Fungsinya:
+-- 1. Mendefinisikan logika otomatisasi bot.
+-- 2. Memanggil fungsi API yang dibinding dari Go (misal: bot:connect(), bot:send_packet()).
+-- 3. Bisa diedit secara dinamis tanpa perlu compile ulang program utama.

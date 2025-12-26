@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VortenixGO | Agentic Bot Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=3">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <!-- Icon Library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>Vortenix<span>GO</span></h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-target="bots-view">
+                    <i class="fa-solid fa-robot"></i> Bots
+                </button>
+                <button class="nav-item" data-target="list-view">
+                    <i class="fa-solid fa-list"></i> List
+                </button>
+                <button class="nav-item" data-target="database-view">
+                    <i class="fa-solid fa-database"></i> Database
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="add-bot-btn" class="btn primary full-width">
+                    <i class="fa-solid fa-plus"></i> Add Bot
+                </button>
+                <button id="remove-bot-btn" class="btn danger full-width mt-2">
+                    <i class="fa-solid fa-trash"></i> Remove Bot
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- BOTS VIEW -->
+            <div id="bots-view" class="view-section active">
+                <div class="bots-layout">
+                    <!-- Left Column: Bot List -->
+                    <div class="bot-list-panel">
+                        <div class="panel-header">
+                            <h3><i class="fa-solid fa-users"></i> Active Bots</h3>
+                            <span class="badge" id="bot-count">0</span>
+                        </div>
+                        <div class="bot-list-container" id="bot-list">
+                            <!-- Bot items will be injected here -->
+                            <div class="empty-state">No bots added</div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Bot Details -->
+                    <div class="bot-detail-panel" id="bot-detail-panel">
+                        <div class="no-selection">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <p>Select a bot to view details</p>
+                        </div>
+
+                        <div class="bot-dashboard hidden" id="bot-dashboard">
+                            <div class="dashboard-grid">
+                                <!-- PANEL 1: BOT INFORMATION -->
+                                <div class="card bot-info-panel">
+                                    <div class="card-header">
+                                        <h3><i class="fa-solid fa-circle-info"></i> Bot Information</h3>
+                                    </div>
+                                    <div class="bot-identity-row">
+                                        <h2 id="detail-name">BotName123</h2>
+                                        <div class="status-indicator">
+                                            <span class="status-dot offline" id="status-dot"></span>
+                                            <span id="detail-status-text">Offline</span>
+                                        </div>
+                                    </div>
+                                    <div class="info-grid">
+                                        <div class="info-item">
+                                            <label>Level & Gems</label>
+                                            <span id="detail-level-gems">Lvl 0 | 0 Gems</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>World & Position</label>
+                                            <span id="detail-world-pos">EMPTY (0, 0)</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>Played & Age</label>
+                                            <span id="detail-played-age">0h | 0d</span>
+                                        </div>
+                                    </div>
+                                    <div class="bot-config-section">
+                                        <div class="info-item hidden" id="detail-glog-group">
+                                            <label>Glog / Format</label>
+                                            <input type="text" id="detail-glog" class="small-input"
+                                                placeholder="Username (Glog)">
+                                        </div>
+                                        <div class="info-item">
+                                            <label>Socks5 Proxy</label>
+                                            <input type="text" id="detail-proxy" class="small-input"
+                                                placeholder="ip:port:user:pass">
+                                        </div>
+                                    </div>
+                                    <div class="bot-actions-section">
+                                        <div class="input-group">
+                                            <input type="text" id="world-input" placeholder="World Name">
+                                            <button class="btn secondary" id="btn-warp">Warp</button>
+                                        </div>
+                                        <div class="action-buttons-grid">
+                                            <button id="btn-connect" class="btn success"><i
+                                                    class="fa-solid fa-plug"></i> Connect</button>
+                                            <button id="btn-disconnect" class="btn danger" disabled><i
+                                                    class="fa-solid fa-power-off"></i> Disconnect</button>
+                                            <button id="btn-leave" class="btn warning"><i
+                                                    class="fa-solid fa-door-open"></i> Leave</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PANEL 2: MOVEMENT CONTROL -->
+                                <div class="card movement-panel">
+                                    <div class="card-header">
+                                        <h3><i class="fa-solid fa-gamepad"></i> Movement Control</h3>
+                                    </div>
+                                    <div class="movement-container">
+                                        <div class="d-pad">
+                                            <button class="pad-btn up" data-dir="up"><i
+                                                    class="fa-solid fa-arrow-up"></i></button>
+                                            <button class="pad-btn left" data-dir="left"><i
+                                                    class="fa-solid fa-arrow-left"></i></button>
+                                            <button class="pad-btn center" data-action="interact" title="Interact"><i
+                                                    class="fa-solid fa-hand-pointer"></i></button>
+                                            <button class="pad-btn right" data-dir="right"><i
+                                                    class="fa-solid fa-arrow-right"></i></button>
+                                            <button class="pad-btn down" data-dir="down"><i
+                                                    class="fa-solid fa-arrow-down"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PANEL 3: PREFERENCES -->
+                                <div class="card preferences-panel">
+                                    <div class="card-header">
+                                        <h3><i class="fa-solid fa-sliders"></i> Preferences</h3>
+                                    </div>
+                                    <div class="settings-list">
+                                        <div class="setting-item">
+                                            <span>Bypass Logon</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="pref-bypass">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item">
+                                            <span>Auto Reconnect</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="pref-reconnect">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item">
+                                            <span>Auto Collect</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="pref-collect">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item">
+                                            <span>Auto Accept</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="pref-accept">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item">
+                                            <span>Auto Disconnect On Mod</span>
+                                            <label class="switch">
+                                                <input type="checkbox" id="pref-mod-exit">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PANEL 4: INTERVALS / DELAY SETTINGS -->
+                                <div class="card intervals-panel">
+                                    <div class="card-header">
+                                        <h3><i class="fa-solid fa-stopwatch"></i> Intervals</h3>
+                                        <div class="header-action">
+                                            <span
+                                                style="font-size: 0.8rem; color: var(--text-muted); margin-right: 8px;">Dynamic
+                                                Delay</span>
+                                            <label class="switch sm">
+                                                <input type="checkbox" id="int-dynamic">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="intervals-list">
+                                        <div class="interval-item">
+                                            <div class="interval-info">
+                                                <span class="label">Move Delay</span>
+                                                <span class="value">0.15s <span class="variation">+0.02s</span></span>
+                                            </div>
+                                            <input type="range" min="50" max="1000" value="150" class="interval-slider">
+                                        </div>
+                                        <div class="interval-item">
+                                            <div class="interval-info">
+                                                <span class="label">Collect Delay</span>
+                                                <span class="value">0.10s <span class="variation">+0.01s</span></span>
+                                            </div>
+                                            <input type="range" min="50" max="1000" value="100" class="interval-slider">
+                                        </div>
+                                        <div class="interval-item">
+                                            <div class="interval-info">
+                                                <span class="label">Hit Delay</span>
+                                                <span class="value">0.20s <span class="variation">+0.03s</span></span>
+                                            </div>
+                                            <input type="range" min="50" max="1000" value="200" class="interval-slider">
+                                        </div>
+                                        <div class="interval-item">
+                                            <div class="interval-info">
+                                                <span class="label">Place Delay</span>
+                                                <span class="value">0.12s <span class="variation">+0.02s</span></span>
+                                            </div>
+                                            <input type="range" min="50" max="1000" value="120" class="interval-slider">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Keeping Console & Other Tabs in a compact way -->
+                            <div class="sub-tabs-container">
+                                <div class="tabs-header">
+                                    <button class="tab-link active" data-tab="tab-console">Console</button>
+                                    <button class="tab-link" data-tab="tab-executor">Executor</button>
+                                    <button class="tab-link" data-tab="tab-inventory">Inventory</button>
+                                    <button class="tab-link" data-tab="tab-map">Map</button>
+                                    <button class="tab-link" data-tab="tab-debug">Debug</button>
+                                    <button class="tab-link" data-tab="tab-developer">Developer</button>
+                                </div>
+                                <div class="tabs-content">
+                                    <div id="tab-console" class="tab-pane active">
+                                        <div class="console-box" id="bot-console">
+                                            <div class="log-line system">> Console initialized (v2)...</div>
+                                        </div>
+                                    </div>
+                                    <div id="tab-executor" class="tab-pane">
+                                        <div class="executor-container">
+                                            <div class="editor-header">
+                                                <span><i class="fa-solid fa-code"></i> Lua Executor</span>
+                                                <button id="btn-execute-lua" class="btn primary btn-sm">Execute</button>
+                                            </div>
+                                            <textarea id="lua-editor" class="code-editor" spellcheck="false"
+                                                placeholder="-- Tulis script Lua di sini..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div id="tab-map" class="tab-pane">
+                                        <div class="placeholder-content">Map Grid</div>
+                                    </div>
+                                    <div id="tab-inventory" class="tab-pane">
+                                        <div class="placeholder-content">Inventory Grid</div>
+                                    </div>
+                                    <div id="tab-debug" class="tab-pane">
+                                        <div class="debug-toolbar">
+                                            <div class="toolbar-group">
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="debug-autoscroll" checked> Auto Scroll
+                                                </label>
+                                                <div class="input-with-label">
+                                                    <label for="debug-limit">Logs:</label>
+                                                    <input type="number" id="debug-limit" value="100" min="10"
+                                                        max="1000" class="tiny-input">
+                                                </div>
+                                                <div class="v-separator"></div>
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="debug-all" checked> All
+                                                </label>
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="debug-https" checked> Show HTTPS
+                                                </label>
+                                            </div>
+                                            <div class="toolbar-group">
+                                                <button class="btn secondary btn-sm" id="clear-debug">Clear</button>
+                                            </div>
+                                        </div>
+                                        <div id="debug-logs" class="debug-log-container">
+                                            <div class="log-entry system">System: Debugger initialized. Waiting for
+                                                events...</div>
+                                        </div>
+                                    </div>
+                                    <div id="tab-developer" class="tab-pane">
+                                        <div class="developer-box">
+                                            <div class="editor-header">
+                                                <span><i class="fa-solid fa-bug"></i> Internal Data Explorer</span>
+                                            </div>
+                                            <pre id="dev-internal-json"
+                                                class="json-viewer">// Bot internal data will appear here...</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder List View -->
+            <div id="list-view" class="view-section">
+                <h2>Global Bot List</h2>
+                <p>Table view of all bots will go here.</p>
+            </div>
+
+            <!-- Database View -->
+            <div id="database-view" class="view-section">
+                <div class="db-layout">
+                    <!-- Left Column -->
+                    <div class="db-left-panel">
+                        <!-- Database Info Card -->
+                        <div class="card db-info-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-server"></i> Database Info</h3>
+                                <span class="badge" id="db-status-badge">Loaded</span>
+                            </div>
+                            <div class="info-grid-mini">
+                                <div class="info-item">
+                                    <label>Version</label>
+                                    <span id="db-version">-</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Total Items</label>
+                                    <span id="db-total-items">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Top: Search Box -->
+                        <div class="db-search-card">
+                            <div class="search-input-wrapper">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="db-search-input" placeholder="Search items by name...">
+                            </div>
+                        </div>
+
+                        <!-- Bottom: Item List -->
+                        <div class="db-list-card">
+                            <div class="panel-header">
+                                <h3><i class="fa-solid fa-list-ul"></i> Search Results</h3>
+                                <span class="badge" id="db-item-count">0</span>
+                            </div>
+                            <div class="db-item-list" id="db-item-list">
+                                <div class="empty-state">Start typing to search items</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Item Information -->
+                    <div class="db-right-panel">
+                        <div class="item-detail-card" id="item-detail-card">
+                            <div class="no-selection">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <p>Select an item to view detailed information</p>
+                            </div>
+
+                            <div class="item-info-content hidden" id="item-info-content">
+                                <div class="item-header">
+                                    <div class="item-title-group">
+                                        <h2 id="item-name">Item Name</h2>
+                                        <span class="item-id-badge" id="item-id">ID: 0</span>
+                                    </div>
+                                    <div class="item-stats-row">
+                                        <div class="stat-badge rarity"><i class="fa-solid fa-star"></i> Rarity: <span
+                                                id="item-rarity">0</span></div>
+                                        <div class="stat-badge grow-time"><i class="fa-solid fa-clock"></i> <span
+                                                id="item-grow-time">0s</span></div>
+                                    </div>
+                                </div>
+
+                                <div class="item-body">
+                                    <div class="info-section">
+                                        <h4><i class="fa-solid fa-file-text"></i> Description</h4>
+                                        <p id="item-description">No description available.</p>
+                                    </div>
+
+                                    <div class="db-details-grid">
+                                        <!-- Gameplay Section -->
+                                        <div class="detail-group">
+                                            <h5><i class="fa-solid fa-gamepad"></i> Gameplay</h5>
+                                            <div class="info-grid-mini">
+                                                <div class="info-item"><label>Action Type</label><span
+                                                        id="item-action-type">-</span></div>
+                                                <div class="info-item"><label>Material</label><span
+                                                        id="item-material">-</span></div>
+                                                <div class="info-item"><label>Collision Type</label><span
+                                                        id="item-collision-type">-</span></div>
+                                                <div class="info-item"><label>Clothing Type</label><span
+                                                        id="item-clothing-type">-</span></div>
+                                                <div class="info-item"><label>Block Health</label><span
+                                                        id="item-health">-</span></div>
+                                                <div class="info-item"><label>Max Item</label><span
+                                                        id="item-max-item">-</span></div>
+                                                <div class="info-item"><label>Drop Chance</label><span
+                                                        id="item-drop-chance">-</span></div>
+                                                <div class="info-item"><label>Is Rayman</label><span
+                                                        id="item-rayman">-</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Visual Section -->
+                                        <div class="detail-group">
+                                            <h5><i class="fa-solid fa-image"></i> Visual & Texture</h5>
+                                            <div class="info-grid-mini">
+                                                <div class="info-item"><label>Texture File</label><span
+                                                        id="item-texture">-</span></div>
+                                                <div class="info-item"><label>Texture Hash</label><span
+                                                        id="item-texture-hash">-</span></div>
+                                                <div class="info-item"><label>Texture X/Y</label><span
+                                                        id="item-texture-pos">-</span></div>
+                                                <div class="info-item"><label>Render Type</label><span
+                                                        id="item-render-type">-</span></div>
+                                                <div class="info-item"><label>Visual Effect</label><span
+                                                        id="item-visual-effect">-</span></div>
+                                                <div class="info-item"><label>File Name</label><span
+                                                        id="item-file-name">-</span></div>
+                                                <div class="info-item"><label>File Hash</label><span
+                                                        id="item-file-hash">-</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Seed/Tree Section -->
+                                        <div class="detail-group">
+                                            <h5><i class="fa-solid fa-leaf"></i> Seed & Tree</h5>
+                                            <div class="info-grid-mini">
+                                                <div class="info-item"><label>Seed Base/Overlay</label><span
+                                                        id="item-seed-sprites">-</span></div>
+                                                <div class="info-item"><label>Tree Base/Overlay</label><span
+                                                        id="item-tree-sprites">-</span></div>
+                                                <div class="info-item"><label>Base Color</label><span
+                                                        id="item-base-color" class="color-preview">-</span></div>
+                                                <div class="info-item"><label>Overlay Color</label><span
+                                                        id="item-overlay-color" class="color-preview">-</span></div>
+                                                <div class="info-item"><label>Ingredient</label><span
+                                                        id="item-ingredient">-</span></div>
+                                                <div class="info-item"><label>Cooking Ing.</label><span
+                                                        id="item-cooking-ing">-</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Pet Section -->
+                                        <div class="detail-group">
+                                            <h5><i class="fa-solid fa-dog"></i> Pet Stats</h5>
+                                            <div class="info-grid-mini">
+                                                <div class="info-item"><label>Pet Name</label><span
+                                                        id="item-pet-name">-</span></div>
+                                                <div class="info-item"><label>Pet Prefix</label><span
+                                                        id="item-pet-prefix">-</span></div>
+                                                <div class="info-item"><label>Pet Suffix</label><span
+                                                        id="item-pet-suffix">-</span></div>
+                                                <div class="info-item"><label>Pet Ability</label><span
+                                                        id="item-pet-ability">-</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Extra Section -->
+                                        <div class="detail-group full-width">
+                                            <h5><i class="fa-solid fa-plus-circle"></i> Extra Data</h5>
+                                            <div class="info-grid-mini">
+                                                <div class="info-item"><label>Punch Option</label><span
+                                                        id="item-punch-option">-</span></div>
+                                                <div class="info-item"><label>Stripey Wall</label><span
+                                                        id="item-stripey">-</span></div>
+                                                <div class="info-item"><label>Audio Volume</label><span
+                                                        id="item-audio">-</span></div>
+                                                <div class="info-item"><label>Texture Path 2</label><span
+                                                        id="item-texture2">-</span></div>
+                                                <div class="info-item"><label>Extra Options</label><span
+                                                        id="item-extra-opt" class="long-text">-</span></div>
+                                                <div class="info-item"><label>Extra Option 2</label><span
+                                                        id="item-extra-opt2" class="long-text">-</span></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Flags Section -->
+                                        <div class="detail-group full-width">
+                                            <h5><i class="fa-solid fa-tags"></i> Item Flags</h5>
+                                            <div class="flags-grid" id="item-flags">
+                                                <!-- Flags will be injected here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Add Bot Modal -->
+    <div id="add-bot-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Bot</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Account Type</label>
+                    <div class="type-selector">
+                        <label class="radio-card active">
+                            <input type="radio" name="bot-type" value="legacy" checked>
+                            <i class="fa-solid fa-user"></i> Legacy
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="bot-type" value="gmail">
+                            <i class="fa-brands fa-google"></i> Gmail
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="bot-type" value="apple">
+                            <i class="fa-brands fa-apple"></i> Apple
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Unified Form Fields -->
+                <div class="auth-form-container">
+                    <!-- Legacy Specific -->
+                    <div class="form-group" id="field-legacy-name">
+                        <label>TankID Name</label>
+                        <input type="text" id="bot-identity" placeholder="Username">
+                    </div>
+                    <div class="form-group" id="field-legacy-pass">
+                        <label>Password</label>
+                        <input type="password" id="bot-password" placeholder="Password">
+                    </div>
+
+                    <!-- Gmail/Apple Specific (Consolidated) -->
+                    <div class="form-group hidden" id="field-token-combined">
+                        <label>Email / Token</label>
+                        <input class="form-group" type="text" id="bot-token-combined"
+                            placeholder="Paste Email:Pass atau Identity Token di sini" />
+                    </div>
+
+                    <!-- External Password (Gmail/Apple only, Optional) -->
+                    <div class="form-group hidden" id="field-external-password">
+                        <label>External Auth Password (Optional)</label>
+                        <input type="password" id="bot-external-password" placeholder="Password untuk Glog">
+                        <p class="field-hint">Password untuk otentikasi eksternal (Gmail/Apple). Kosongkan jika tidak
+                            diperlukan.</p>
+                    </div>
+
+                    <!-- Glog (Legacy only / Optional) -->
+                    <div class="form-group hidden" id="field-glog">
+                        <label>Glog / Format (Optional)</label>
+                        <input type="text" id="bot-glog" placeholder="Username (Glog) atau format khusus">
+                        <p class="field-hint">Kosongkan jika tidak diperlukan.</p>
+                    </div>
+                    <!-- Proxy (Universal) -->
+                    <div class="form-group">
+                        <label>Socks5 Proxy (Optional)</label>
+                        <input type="text" id="bot-proxy-input" placeholder="ip:port:user:pass">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn secondary close-modal">Cancel</button>
+                    <button id="confirm-add-bot" class="btn primary">Add Bot</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+
+</html>
