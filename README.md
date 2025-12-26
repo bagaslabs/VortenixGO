@@ -5,7 +5,6 @@
 - Sistem Operasi:
   - Windows 64-bit
   - Linux 64-bit
-  - macOS 64-bit
 - Terminal / Command Prompt
 
 > ⚠️ **Catatan:**  
