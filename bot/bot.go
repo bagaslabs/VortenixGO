@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"vortenixgo/network/enet"
 )
 
 // BotType defines the authentication method
@@ -121,9 +122,19 @@ type Bot struct {
 	DisplayName      string `json:"display_name"`      // Computed display name (Email or InGameName)
 	Proxy            string `json:"proxy"`             // Socks5 Proxy (ip:port:user:pass)
 
+	// Enet Client
+	Client *enet.Host
+	Peer   *enet.Peer
+
+	Ping     int  `json:"ping"`
+	ShowENet bool `json:"show_enet"`
+
 	// Concurrency control
 	mu   sync.Mutex
 	stop chan struct{}
+
+	// Callbacks
+	OnDebug func(category, message string, isError bool) `json:"-"`
 }
 
 func (b *Bot) Lock() {
@@ -260,10 +271,6 @@ func (b *Bot) Connect() {
 	b.Connected = true
 }
 
-func (b *Bot) StartEventLoop() {
-	go b.eventLoop()
-}
-
 func (b *Bot) Disconnect() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -277,17 +284,4 @@ func (b *Bot) Disconnect() {
 	close(b.stop) // Signal the event loop to stop
 	// Re-create the channel for next use, or handle differently
 	b.stop = make(chan struct{})
-}
-
-func (b *Bot) eventLoop() {
-	// Simulator for ENet loop
-	// for {
-	// 	select {
-	// 	case <-b.stop:
-	// 		return
-	// 	default:
-	// 		// Poll C functions here
-	// 		// bot_service(b.enet_host)
-	// 	}
-	// }
 }

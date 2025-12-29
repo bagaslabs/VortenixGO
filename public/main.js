@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const botListContainer = document.getElementById('bot-list');
     const botCountSpan = document.getElementById('bot-count');
     const botDashboard = document.getElementById('bot-dashboard');
-    const noSelection = document.querySelector('.no-selection');
+    const botNoSelection = document.querySelector('#bot-detail-panel .no-selection');
     const debugLogsContainer = document.getElementById('debug-logs');
 
     function renderBotList() {
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedBotId = id;
         const bot = bots.find(b => b.id === id);
         if (bot) {
-            noSelection.classList.add('hidden');
+            botNoSelection.classList.add('hidden');
             botDashboard.classList.remove('hidden');
             updateBotDashboard(bot);
             renderBotList();
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function deselectBot() {
         selectedBotId = null;
-        noSelection.classList.remove('hidden');
+        botNoSelection.classList.remove('hidden');
         botDashboard.classList.add('hidden');
         document.getElementById('bot-console').innerHTML = '<div class="log-line system">> Console cleared...</div>';
         debugLogsContainer.innerHTML = '';
@@ -183,7 +183,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('detail-level-gems').textContent = `Lvl ${bot.level || 0} | ${bot.gems || 0} Gems`;
         document.getElementById('detail-world-pos').textContent = `${bot.world || 'EMPTY'} (${bot.pos_x || 0}, ${bot.pos_y || 0})`;
+
         document.getElementById('detail-played-age').textContent = `${bot.play_time || '0h'} | ${bot.age || 0}d`;
+        document.getElementById('detail-ping').textContent = `${bot.ping || 0} ms`;
+        document.getElementById('debug-enet').checked = bot.show_enet || false;
 
         const glogGroup = document.getElementById('detail-glog-group');
         const glogInput = document.getElementById('detail-glog');
@@ -436,6 +439,15 @@ document.addEventListener('DOMContentLoaded', () => {
     [debugFilterAll, debugFilterHttps, debugLimitInput].forEach(el => {
         el.onchange = () => { if (selectedBotId) refreshDebugView(selectedBotId); };
     });
+
+    document.getElementById('debug-enet').onchange = (e) => {
+        if (selectedBotId) {
+            socket.send(JSON.stringify({
+                type: 'UPDATE_BOT_CONFIG',
+                data: { id: selectedBotId, show_enet: e.target.checked }
+            }));
+        }
+    };
 
     // --- Database View Implementation ---
     const dbSearchInput = document.getElementById('db-search-input');

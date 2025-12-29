@@ -166,8 +166,11 @@ func (c *Client) readPump() {
 			}
 			log.Printf("Adding bot: type=%s, name=%s, glog=%s, proxy=%s", bType, name, glog, proxy)
 
-			_, err := bot.BotManager.AddBot(bType, name, pass, glog, proxy)
+			newBot, err := bot.BotManager.AddBot(bType, name, pass, glog, proxy)
 			if err == nil {
+				newBot.OnDebug = func(cat, msg string, isErr bool) {
+					c.hub.BroadcastDebug(newBot.ID, cat, msg, isErr)
+				}
 				c.hub.BroadcastBotUpdate()
 			} else {
 				log.Printf("Error adding bot: %v", err)
@@ -212,6 +215,9 @@ func (c *Client) readPump() {
 				}
 				if p, ok := data["proxy"].(string); ok {
 					b.Proxy = p
+				}
+				if s, ok := data["show_enet"].(bool); ok {
+					b.ShowENet = s
 				}
 				b.Unlock()
 				c.hub.BroadcastBotUpdate()

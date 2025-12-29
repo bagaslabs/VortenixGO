@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VortenixGO | Agentic Bot Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <link
         href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
         rel="stylesheet">
@@ -92,6 +92,10 @@
                                         <div class="info-item">
                                             <label>Played & Age</label>
                                             <span id="detail-played-age">0h | 0d</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>Ping</label>
+                                            <span id="detail-ping">0 ms</span>
                                         </div>
                                     </div>
                                     <div class="bot-config-section">
@@ -283,6 +287,9 @@
                                                 </label>
                                                 <label class="checkbox-label">
                                                     <input type="checkbox" id="debug-https" checked> Show HTTPS
+                                                </label>
+                                                <label class="checkbox-label">
+                                                    <input type="checkbox" id="debug-enet"> Show ENet
                                                 </label>
                                             </div>
                                             <div class="toolbar-group">

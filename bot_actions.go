@@ -71,7 +71,9 @@ func HandleBotConnect(b *bot.Bot, hub *ws.Hub) {
 				b.Unlock()
 
 				if isInvalid {
-					handleGlogFlow(b, handler, hub)
+					if err := handleGlogFlow(b, handler, hub); err != nil {
+						return
+					}
 				}
 				return
 			}
@@ -80,7 +82,9 @@ func HandleBotConnect(b *bot.Bot, hub *ws.Hub) {
 			hub.BroadcastBotUpdate()
 		} else {
 			// No token: Get Dashboard/Form URL first
-			handleGlogFlow(b, handler, hub)
+			if err := handleGlogFlow(b, handler, hub); err != nil {
+				return
+			}
 
 			// If it's legacy, it might continue to connect,
 			// but for Gmail/Apple it usually stops at "Awaiting Glog"
@@ -88,17 +92,16 @@ func HandleBotConnect(b *bot.Bot, hub *ws.Hub) {
 				return
 			}
 		}
-
+		b.ConnectClient()
+		b.EventListener()
 		// 6. Final Connection State
-		b.Connect()
 		hub.BroadcastBotUpdate()
 
 		// 3. Start ENet event loop
-		b.StartEventLoop()
 	}()
 }
 
-func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) {
+func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) error {
 	b.Lock()
 	b.Status = "Getting Login Form..."
 	b.Unlock()
@@ -107,14 +110,16 @@ func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) {
 	err := handler.GetDashboard(b)
 	if err != nil {
 		b.Lock()
-		// Only set generic error if status wasn't already updated to something specific like HTTP_BLOCK
+		// Preserve HTTP_BLOCK or other specific status set by GetDashboard
+		// Only set generic error if status is still the default "Getting Login Form..."
 		if b.Status == "Getting Login Form..." {
-			b.Status = "Login Form Error"
+			b.Status = "HTTP_BLOCK"
 		}
+		// If GetDashboard already set HTTP_BLOCK, Bad Gateway, or other status, keep it
 		b.Unlock()
 		hub.BroadcastBotUpdate()
 		log.Printf("[Orchestrator][%s] GetDashboard failed: %v", b.Name, err)
-		return
+		return err
 	}
 
 	// GetCookies step: Only for Legacy bots
@@ -139,7 +144,7 @@ func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) {
 			b.Unlock()
 			hub.BroadcastBotUpdate()
 			log.Printf("[Orchestrator][%s] GetCookies failed: %v", b.Name, err)
-			return
+			return err
 		}
 	} else {
 		log.Printf("[Orchestrator][%s] Skipping GetCookies (Cookies obtained from Dashboard)", b.Name)
@@ -159,7 +164,7 @@ func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) {
 		b.Unlock()
 		hub.BroadcastBotUpdate()
 		log.Printf("[Orchestrator][%s] GetToken failed: %v", b.Name, err)
-		return
+		return err
 	}
 
 	b.Lock()
@@ -171,7 +176,6 @@ func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) {
 
 	// If getting token succeeded, we should probably proceed to connect to game server (ENet).
 	// Calls Connect() to update status to "Connecting..." and trigger any UI/logic needed.
-	b.Connect()
-	b.StartEventLoop()
 	hub.BroadcastBotUpdate()
+	return nil
 }

@@ -125,14 +125,14 @@ body {
 }
 
 .view-section {
-    display: none;
+    display: none !important;
     height: 100%;
     padding: 20px;
     overflow-y: auto;
 }
 
 .view-section.active {
-    display: block;
+    display: block !important;
 }
 
 /* Bots Layout Grid */
@@ -1099,10 +1099,14 @@ textarea:focus {
 /* --- Database View Styles --- */
 /* Specific fix for Database View to prevent double scrollbars */
 #database-view {
+    display: none !important;
     overflow: hidden;
     padding: 20px;
-    display: flex;
     flex-direction: column;
+}
+
+#database-view.active {
+    display: flex !important;
 }
 
 .db-layout {
@@ -1200,12 +1204,14 @@ textarea:focus {
     scroll-behavior: smooth;
     min-height: 0;
     display: block;
-    /* Ensure block formatting context */
+    position: relative;
+    z-index: 1;
 }
 
 .item-detail-card {
     padding: 24px;
     min-height: 100%;
+    position: relative;
 }
 
 .item-header {
