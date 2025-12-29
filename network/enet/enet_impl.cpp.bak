@@ -1,3 +1,0 @@
-#include <time.h>
-#define clock_gettime enet_clock_gettime
-#include "enet.h"

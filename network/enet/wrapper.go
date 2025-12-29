@@ -9,6 +9,7 @@ package enet
 #include <windows.h>
 #include "enet.h"
 #include <stdlib.h>
+#include <time.h>
 
 // Helper to set checksum
 void enet_host_set_checksum_crc32(ENetHost* host) {
@@ -19,6 +20,17 @@ void enet_host_set_checksum_crc32(ENetHost* host) {
 void enet_host_set_using_new_packet(ENetHost* host, int val) {
     host->usingNewPacket = val;
 }
+
+// Helper to set proxy
+void enet_host_use_proxy_helper(ENetHost* host, const char* ip, int port, const char* user, const char* pass) {
+    enet_host_use_proxy(host, ip, (uint16_t)port, user, pass);
+}
+
+// Global initialization helper
+void enet_initialize_helper() {
+    enet_initialize();
+    srand((unsigned int)time(NULL));
+}
 */
 import "C"
 import (
@@ -28,7 +40,8 @@ import (
 
 // Initialize enet
 func Initialize() int {
-	return int(C.enet_initialize())
+	C.enet_initialize_helper()
+	return 0
 }
 
 // Deinitialize enet
@@ -112,6 +125,18 @@ func (h *Host) SetUsingNewPacket(value bool) {
 			val = 1
 		}
 		C.enet_host_set_using_new_packet(h.cHost, C.int(val))
+	}
+}
+
+func (h *Host) SetProxy(ip string, port int, user string, pass string) {
+	if h.cHost != nil {
+		cip := C.CString(ip)
+		cuser := C.CString(user)
+		cpass := C.CString(pass)
+		defer C.free(unsafe.Pointer(cip))
+		defer C.free(unsafe.Pointer(cuser))
+		defer C.free(unsafe.Pointer(cpass))
+		C.enet_host_use_proxy_helper(h.cHost, cip, C.int(port), cuser, cpass)
 	}
 }
 

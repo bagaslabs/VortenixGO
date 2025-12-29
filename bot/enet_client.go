@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"vortenixgo/network/enet"
 )
 
@@ -73,6 +75,24 @@ func (b *Bot) ConnectClient() {
 	client.SetChecksum()
 	client.CompressWithRangeCoder()
 
+	// Use Proxy if configured
+	b.mu.Lock()
+	proxyStr := b.Proxy
+	b.mu.Unlock()
+
+	if proxyStr != "" {
+		parts := strings.Split(proxyStr, ":")
+		if len(parts) == 4 {
+			pPort, _ := strconv.Atoi(parts[1])
+			client.SetProxy(parts[0], pPort, parts[2], parts[3])
+			b.logENet(fmt.Sprintf("Using Proxy: %s:%s", parts[0], parts[1]))
+		} else if len(parts) == 2 {
+			pPort, _ := strconv.Atoi(parts[1])
+			client.SetProxy(parts[0], pPort, "", "")
+			b.logENet(fmt.Sprintf("Using Proxy: %s:%s", parts[0], parts[1]))
+		}
+	}
+
 	address, err := enet.NewAddress(targetIP, targetPort)
 	if err != nil {
 		log.Printf("\n[FAILED TO CONNECT TO SERVER]:%s", targetIP)
@@ -97,9 +117,10 @@ func (b *Bot) ConnectClient() {
 	b.mu.Lock()
 	b.Client = client
 	b.Peer = peer
+	b.Connected = true
 	b.mu.Unlock()
-	// Logger equivalent
-	log.Printf("[SYSTEM]: CONNECTION TO SERVER ESTABLISHED: %s:%d", targetIP, targetPort)
+
+	log.Printf("[SYSTEM]: CONNECTION INITIATED TO %s:%d", targetIP, targetPort)
 }
 
 func (b *Bot) logENet(msg string) {
@@ -149,6 +170,7 @@ func (b *Bot) EventListener() {
 
 				b.mu.Lock()
 				b.Status = "online"
+				b.Connected = true
 				b.mu.Unlock()
 
 			case enet.EventDisconnect:
@@ -158,9 +180,16 @@ func (b *Bot) EventListener() {
 				fmt.Println("\n[ENET] " + msg)
 				b.logENet(msg)
 
-				b.DisconnectClient()
 				b.mu.Lock()
-				b.Status = "offline"
+				status := b.Status
+				b.mu.Unlock()
+
+				b.DisconnectClient()
+
+				b.mu.Lock()
+				if status != "Redirecting" {
+					b.Status = "offline"
+				}
 				b.mu.Unlock()
 				return
 
