@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VortenixGO | Agentic Bot Dashboard</title>
     <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="tooltip.css">
     <link
         href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
         rel="stylesheet">
@@ -98,19 +99,11 @@
                                             <span id="detail-ping">0 ms</span>
                                         </div>
                                     </div>
-                                    <div class="bot-config-section">
-                                        <div class="info-item hidden" id="detail-glog-group">
-                                            <label>Glog / Format</label>
-                                            <input type="text" id="detail-glog" class="small-input"
-                                                placeholder="Username (Glog)">
-                                        </div>
-                                        <div class="info-item">
-                                            <label>Socks5 Proxy</label>
-                                            <input type="text" id="detail-proxy" class="small-input"
-                                                placeholder="ip:port:user:pass">
-                                        </div>
-                                    </div>
                                     <div class="bot-actions-section">
+                                        <div class="input-group">
+                                            <input type="text" id="say-input" placeholder="Say something...">
+                                            <button class="btn secondary" id="btn-say">Say</button>
+                                        </div>
                                         <div class="input-group">
                                             <input type="text" id="world-input" placeholder="World Name">
                                             <button class="btn secondary" id="btn-warp">Warp</button>
@@ -126,23 +119,38 @@
                                     </div>
                                 </div>
 
-                                <!-- PANEL 2: MOVEMENT CONTROL -->
+                                <!-- PANEL 2: MOVEMENT CONTROL & CONFIG -->
                                 <div class="card movement-panel">
                                     <div class="card-header">
-                                        <h3><i class="fa-solid fa-gamepad"></i> Movement Control</h3>
+                                        <h3><i class="fa-solid fa-gamepad"></i> Bot Control</h3>
                                     </div>
-                                    <div class="movement-container">
-                                        <div class="d-pad">
-                                            <button class="pad-btn up" data-dir="up"><i
-                                                    class="fa-solid fa-arrow-up"></i></button>
-                                            <button class="pad-btn left" data-dir="left"><i
-                                                    class="fa-solid fa-arrow-left"></i></button>
-                                            <button class="pad-btn center" data-action="interact" title="Interact"><i
-                                                    class="fa-solid fa-hand-pointer"></i></button>
-                                            <button class="pad-btn right" data-dir="right"><i
-                                                    class="fa-solid fa-arrow-right"></i></button>
-                                            <button class="pad-btn down" data-dir="down"><i
-                                                    class="fa-solid fa-arrow-down"></i></button>
+                                    <div class="bot-control-content">
+                                        <div class="movement-section">
+                                            <div class="d-pad">
+                                                <button class="pad-btn up" data-dir="up"><i
+                                                        class="fa-solid fa-arrow-up"></i></button>
+                                                <button class="pad-btn left" data-dir="left"><i
+                                                        class="fa-solid fa-arrow-left"></i></button>
+                                                <button class="pad-btn center" data-action="interact"
+                                                    title="Interact"><i class="fa-solid fa-hand-pointer"></i></button>
+                                                <button class="pad-btn right" data-dir="right"><i
+                                                        class="fa-solid fa-arrow-right"></i></button>
+                                                <button class="pad-btn down" data-dir="down"><i
+                                                        class="fa-solid fa-arrow-down"></i></button>
+                                            </div>
+                                        </div>
+
+                                        <div class="config-section">
+                                            <div class="info-item hidden" id="detail-glog-group">
+                                                <label>Glog / Format</label>
+                                                <input type="text" id="detail-glog" class="small-input"
+                                                    placeholder="Username (Glog)">
+                                            </div>
+                                            <div class="info-item">
+                                                <label>Socks5 Proxy</label>
+                                                <input type="text" id="detail-proxy" class="small-input"
+                                                    placeholder="ip:port:user:pass">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -265,9 +273,6 @@
                                                 placeholder="-- Tulis script Lua di sini..."></textarea>
                                         </div>
                                     </div>
-                                    <div id="tab-map" class="tab-pane">
-                                        <div class="placeholder-content">Map Grid</div>
-                                    </div>
                                     <div id="tab-inventory" class="tab-pane">
                                         <div class="inventory-header">
                                             <div class="header-stat">
@@ -294,10 +299,73 @@
                                         </div>
                                     </div>
                                     <div id="tab-map" class="tab-pane">
-                                        <div style="padding: 40px; text-align: center; opacity: 0.5;">
-                                            <i class="fa-solid fa-map"
-                                                style="font-size: 48px; margin-bottom: 20px;"></i>
-                                            <p>Map View Coming Soon</p>
+                                        <div class="world-container">
+                                            <div class="world-header">
+                                                <div class="world-info-grid">
+                                                    <div class="world-stat">
+                                                        <i class="fa-solid fa-map"></i>
+                                                        <span id="world-name">EXIT</span>
+                                                    </div>
+                                                    <div class="world-stat">
+                                                        <i class="fa-solid fa-ruler-combined"></i>
+                                                        <span id="world-dimensions">0x0</span>
+                                                    </div>
+                                                    <div class="world-stat">
+                                                        <i class="fa-solid fa-th"></i>
+                                                        <span id="world-tiles">0 tiles</span>
+                                                    </div>
+                                                </div>
+                                                <div class="world-controls">
+                                                    <button id="zoom-in" class="btn btn-sm secondary">
+                                                        <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                                    </button>
+                                                    <button id="zoom-out" class="btn btn-sm secondary">
+                                                        <i class="fa-solid fa-magnifying-glass-minus"></i>
+                                                    </button>
+                                                    <button id="reset-view" class="btn btn-sm secondary">
+                                                        <i class="fa-solid fa-arrows-to-dot"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="world-tabs">
+                                                <button class="world-tab-link active" data-world-tab="world-map">
+                                                    <i class="fa-solid fa-map"></i> Map
+                                                </button>
+                                                <button class="world-tab-link" data-world-tab="world-growscan">
+                                                    <i class="fa-solid fa-seedling"></i> Growscan
+                                                </button>
+                                            </div>
+                                            <div class="world-tab-content">
+                                                <div id="world-map" class="world-tab-pane active">
+                                                    <div class="canvas-container">
+                                                        <canvas id="world-canvas"></canvas>
+                                                    </div>
+                                                    <div class="map-legend">
+                                                        <span><i class="fa-solid fa-circle"
+                                                                style="color: var(--primary);"></i> Foreground</span>
+                                                        <span><i class="fa-solid fa-circle"
+                                                                style="color: var(--text-muted);"></i> Background</span>
+                                                        <span>Zoom: <span id="zoom-level">100%</span></span>
+                                                    </div>
+                                                </div>
+                                                <div id="world-growscan" class="world-tab-pane">
+                                                    <div class="growscan-container">
+                                                        <div class="growscan-header">
+                                                            <h4><i class="fa-solid fa-seedling"></i> Harvestable Tiles
+                                                            </h4>
+                                                            <span id="growscan-count" class="badge success">0</span>
+                                                        </div>
+                                                        <div id="growscan-list" class="growscan-list">
+                                                            <div
+                                                                style="padding: 40px; text-align: center; opacity: 0.5;">
+                                                                <i class="fa-solid fa-seedling"
+                                                                    style="font-size: 48px; margin-bottom: 20px;"></i>
+                                                                <p>No harvestable tiles found</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div id="tab-players" class="tab-pane">
@@ -638,7 +706,7 @@
         </div>
     </div>
 
-    <script src="main.js"></script>
+    <script src="main.js?v=4"></script>
 </body>
 
 </html>

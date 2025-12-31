@@ -32,6 +32,48 @@ func (b *Bot) EventListener(client *enet.Host) {
 
 		b.GetPing()
 
+		// TIMEOUT LOGIC
+		b.mu.Lock()
+		if b.Connected {
+			now := time.Now()
+
+			// Check Ping 500 condition
+			if b.Ping == 500 {
+				if b.Ping500StartedAt == nil {
+					pnow := now
+					b.Ping500StartedAt = &pnow
+				}
+			} else {
+				b.Ping500StartedAt = nil
+			}
+
+			// Check Timeout Condition: Last Packet > 15s AND Ping 500 > 15s
+			lastPacketDuration := now.Sub(b.LastPacketReceivedAt)
+			ping500Duration := time.Duration(0)
+			if b.Ping500StartedAt != nil {
+				ping500Duration = now.Sub(*b.Ping500StartedAt)
+			}
+
+			if lastPacketDuration > 15*time.Second && ping500Duration > 15*time.Second {
+				b.logENet(fmt.Sprintf("Connection Timeout: No packets for %.fs and Ping is %dms", lastPacketDuration.Seconds(), b.Ping))
+				b.mu.Unlock()
+
+				// Use a goroutine to avoid deadlock because StopENet waits for enetLoopDone
+				// which is closed when THIS function (EventListener) returns.
+				go func() {
+					b.StopENet()
+					b.mu.Lock()
+					b.Status = "offline"
+					b.mu.Unlock()
+					if b.OnUpdate != nil {
+						b.OnUpdate()
+					}
+				}()
+				return
+			}
+		}
+		b.mu.Unlock()
+
 		// Verify client is still valid/owned by bot?
 		// Since we pass 'client' arg, we service THIS client.
 		// But if b.Client changes, we should probably stop?
@@ -78,6 +120,8 @@ func (b *Bot) EventListener(client *enet.Host) {
 				b.mu.Lock()
 				b.Status = "online"
 				b.Connected = true
+				b.LastPacketReceivedAt = time.Now()
+				b.Ping500StartedAt = nil
 				b.mu.Unlock()
 
 				if b.OnUpdate != nil {
@@ -109,6 +153,9 @@ func (b *Bot) EventListener(client *enet.Host) {
 				// Do NOT return/break here. Loop continues for next connection (Redirect).
 
 			case enet.EventReceive:
+				b.mu.Lock()
+				b.LastPacketReceivedAt = time.Now()
+				b.mu.Unlock()
 				b.GetPing()
 				b.OnReceive(event)
 				event.Packet.Destroy()
@@ -211,6 +258,9 @@ func (b *Bot) ConnectClient() {
 	b.logENet(fmt.Sprintf("Connecting to %s:%d...", targetIP, targetPort))
 	b.Status = "Connecting..."
 
+	b.LastPacketReceivedAt = time.Now()
+	b.Ping500StartedAt = nil
+
 	client := b.Client
 	var initErr error
 
@@ -309,6 +359,10 @@ func (b *Bot) logENet(msg string) {
 }
 
 func (b *Bot) SendPacket(text string, mType uint32) {
+	b.SendPacketWithDelay(text, mType, 0)
+}
+
+func (b *Bot) SendPacketWithDelay(text string, mType uint32, delay time.Duration) {
 	b.mu.Lock()
 	if !b.Connected { // Check connection status
 		b.mu.Unlock()
@@ -323,7 +377,27 @@ func (b *Bot) SendPacket(text string, mType uint32) {
 	copy(data[4:], []byte(text))
 
 	// Send to queue
-	b.packetQueue <- data
+	b.packetQueue <- QueuedPacket{Data: data, Delay: delay}
+}
+
+func (b *Bot) SendPacketRaw(p *TankPacketStruct) {
+	b.SendPacketRawWithDelay(p, 0)
+}
+
+func (b *Bot) SendPacketRawWithDelay(p *TankPacketStruct, delay time.Duration) {
+	b.mu.Lock()
+	if !b.Connected {
+		b.mu.Unlock()
+		return
+	}
+	b.mu.Unlock()
+
+	raw := p.Serialize()
+	data := make([]byte, 4+len(raw))
+	binary.LittleEndian.PutUint32(data[:4], uint32(NET_MESSAGE_GAME_PACKET))
+	copy(data[4:], raw)
+
+	b.packetQueue <- QueuedPacket{Data: data, Delay: delay}
 }
 
 func (b *Bot) OnReceive(event *enet.Event) {
@@ -398,7 +472,8 @@ func (b *Bot) ProcessQueue() {
 		select {
 		case <-b.stop:
 			return
-		case pkt := <-b.packetQueue:
+		case qPkt := <-b.packetQueue:
+			pkt := qPkt.Data
 			b.mu.Lock()
 			currentPeer := b.Peer
 			if currentPeer != nil && !currentPeer.IsNil() {
@@ -438,8 +513,14 @@ func (b *Bot) ProcessQueue() {
 				currentPeer.Send(0, pkt, 1) // 1 = ENET_PACKET_FLAG_RELIABLE
 			}
 			b.mu.Unlock()
-			// Small delay between packets to prevent spamming
-			time.Sleep(1 * time.Millisecond)
+
+			// Delay after sending
+			if qPkt.Delay > 0 {
+				time.Sleep(qPkt.Delay)
+			} else {
+				// Small delay between packets to prevent spamming
+				time.Sleep(1 * time.Millisecond)
+			}
 		}
 	}
 }

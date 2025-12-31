@@ -383,8 +383,557 @@ type Inventory struct {
 	IsActive   bool   `json:"is_active"`
 }
 
+// WeatherType constants
+type WeatherType uint16
+
+const (
+	WeatherDefault                  WeatherType = 0
+	WeatherSunset                   WeatherType = 1
+	WeatherNight                    WeatherType = 2
+	WeatherDesert                   WeatherType = 3
+	WeatherSunny                    WeatherType = 4
+	WeatherRainyCity                WeatherType = 5
+	WeatherHarvest                  WeatherType = 6
+	WeatherMars                     WeatherType = 7
+	WeatherSpooky                   WeatherType = 8
+	WeatherMaw                      WeatherType = 9
+	WeatherBlank                    WeatherType = 10
+	WeatherSnowy                    WeatherType = 11
+	WeatherGrowch                   WeatherType = 12
+	WeatherGrowchHappy              WeatherType = 13
+	WeatherUndersea                 WeatherType = 14
+	WeatherWarp                     WeatherType = 15
+	WeatherComet                    WeatherType = 16
+	WeatherComet2                   WeatherType = 17
+	WeatherParty                    WeatherType = 18
+	WeatherPineapple                WeatherType = 19
+	WeatherSnowyNight               WeatherType = 20
+	WeatherSpring                   WeatherType = 21
+	WeatherWolf                     WeatherType = 22
+	WeatherNotInitialized           WeatherType = 23
+	WeatherPurpleHaze               WeatherType = 24
+	WeatherFireHaze                 WeatherType = 25
+	WeatherGreenHaze                WeatherType = 26
+	WeatherAquaHaze                 WeatherType = 27
+	WeatherCustomHaze               WeatherType = 28
+	WeatherCustomItems              WeatherType = 29
+	WeatherPagoda                   WeatherType = 30
+	WeatherApocalypse               WeatherType = 31
+	WeatherJungle                   WeatherType = 32
+	WeatherBalloonWarz              WeatherType = 33
+	WeatherBackground               WeatherType = 34
+	WeatherAutumn                   WeatherType = 35
+	WeatherHearth                   WeatherType = 36
+	WeatherStPatricks               WeatherType = 37
+	WeatherIceAge                   WeatherType = 38
+	WeatherVolcano                  WeatherType = 39
+	WeatherFloatingIslands          WeatherType = 40
+	WeatherMascot                   WeatherType = 41
+	WeatherDigitalRain              WeatherType = 42
+	WeatherMonoChrome               WeatherType = 43
+	WeatherTreasure                 WeatherType = 44
+	WeatherSurgery                  WeatherType = 45
+	WeatherBountiful                WeatherType = 46
+	WeatherMeteor                   WeatherType = 47
+	WeatherStars                    WeatherType = 48
+	WeatherAscended                 WeatherType = 49
+	WeatherDestroyed                WeatherType = 50
+	WeatherGrowtopiaSign            WeatherType = 51
+	WeatherDungeon                  WeatherType = 52
+	WeatherLegendaryCity            WeatherType = 53
+	WeatherBloodDragon              WeatherType = 54
+	WeatherPopCity                  WeatherType = 55
+	WeatherAnzu                     WeatherType = 56
+	WeatherTmntCity                 WeatherType = 57
+	WeatherRadCity                  WeatherType = 58
+	WeatherPlaze                    WeatherType = 59
+	WeatherNebula                   WeatherType = 60
+	WeatherProtoStar                WeatherType = 61
+	WeatherDarkMountains            WeatherType = 62
+	WeatherAc15                     WeatherType = 63
+	WeatherMountGrowMore            WeatherType = 64
+	WeatherCrackInReality           WeatherType = 65
+	WeatherLnyNian                  WeatherType = 66
+	WeatherRaymanLock               WeatherType = 67
+	WeatherSteampunk                WeatherType = 68
+	WeatherRealmOfSpirits           WeatherType = 69
+	WeatherBlackhole                WeatherType = 70
+	WeatherGems                     WeatherType = 71
+	WeatherHolidayHaven             WeatherType = 72
+	WeatherFenyxLock                WeatherType = 73
+	WeatherEnchantedLock            WeatherType = 74
+	WeatherRoyalEnchantedLock       WeatherType = 75
+	WeatherNeptunesAtlantis         WeatherType = 76
+	WeatherPinuskiPetalPerfectHaven WeatherType = 77
+	WeatherCandyland                WeatherType = 78
+)
+
+// World represents the game world/map
 type World struct {
-	Name string `json:"name"`
+	Name           string        `json:"name"`
+	Width          uint32        `json:"width"`
+	Height         uint32        `json:"height"`
+	TileCount      uint32        `json:"tile_count"`
+	Tiles          []Tile        `json:"tiles"`
+	DroppedItems   []DroppedItem `json:"dropped_items"`
+	BaseWeather    WeatherType   `json:"base_weather"`
+	CurrentWeather WeatherType   `json:"current_weather"`
+	Version        uint16        `json:"version"`
+	Flags          uint32        `json:"flags"`
+	CollisionMap   []uint8       `json:"-"`
+}
+
+// Tile represents a single tile in the world
+type Tile struct {
+	ForegroundItemID uint16      `json:"fg_id"`
+	BackgroundItemID uint16      `json:"bg_id"`
+	ParentBlockIndex uint16      `json:"parent_idx"`
+	Flags            uint16      `json:"flags"` // FlagsNumber
+	TileFlags        uint16      `json:"tile_flags"`
+	X                uint32      `json:"x"`
+	Y                uint32      `json:"y"`
+	TileType         uint8       `json:"tile_type"`
+	Extra            interface{} `json:"extra,omitempty"`
+}
+
+// TileFlag constants
+const (
+	TileFlagHasExtraData      uint16 = 0x01
+	TileFlagHasParent         uint16 = 0x02
+	TileFlagWasSpliced        uint16 = 0x04
+	TileFlagWillSpawnSeedsToo uint16 = 0x08
+	TileFlagIsSeedling        uint16 = 0x10
+	TileFlagFlippedX          uint16 = 0x20
+	TileFlagIsOn              uint16 = 0x40
+	TileFlagIsOpenToPublic    uint16 = 0x80
+	TileFlagBgIsOn            uint16 = 0x100
+	TileFlagFgAltMode         uint16 = 0x200
+	TileFlagIsWet             uint16 = 0x400
+	TileFlagGlued             uint16 = 0x800
+	TileFlagOnFire            uint16 = 0x1000
+	TileFlagPaintedRed        uint16 = 0x2000
+	TileFlagPaintedGreen      uint16 = 0x4000
+	TileFlagPaintedBlue       uint16 = 0x8000
+)
+
+// DroppedItem represents an item dropped on the ground
+type DroppedItem struct {
+	ID    uint16  `json:"id"`
+	X     float32 `json:"x"`
+	Y     float32 `json:"y"`
+	Count uint8   `json:"count"`
+	Flags uint8   `json:"flags"`
+	UID   uint32  `json:"uid"`
+}
+
+// Tile Extra Data Structs
+
+type TileDoor struct {
+	Text     string `json:"text"`
+	OwnerUID uint32 `json:"owner_uid"`
+}
+
+type TileSign struct {
+	Text  string `json:"text"`
+	Flags uint8  `json:"flags"`
+}
+
+type TileLock struct {
+	Settings     uint8    `json:"settings"`
+	OwnerUID     uint32   `json:"owner_uid"`
+	AccessCount  uint32   `json:"access_count"`
+	AccessUIDs   []uint32 `json:"access_uids"`
+	MinimumLevel uint8    `json:"minimum_level"`
+}
+
+type TileSeed struct {
+	TimePassed     uint32 `json:"time_passed"`
+	ItemOnTree     uint8  `json:"item_on_tree"`
+	ReadyToHarvest bool   `json:"ready_to_harvest"`
+}
+
+type TileMailbox struct {
+	Message1 string `json:"message_1"`
+	Message2 string `json:"message_2"`
+	Message3 string `json:"message_3"`
+	Unknown  uint8  `json:"unknown"`
+}
+
+type TileBulletin struct {
+	Message1 string `json:"message_1"`
+	Message2 string `json:"message_2"`
+	Message3 string `json:"message_3"`
+	Unknown  uint8  `json:"unknown"`
+}
+
+type TileDice struct {
+	Symbol uint8 `json:"symbol"`
+}
+
+type TileChemicalSource struct {
+	TimePassed uint32 `json:"time_passed"`
+}
+
+type TileAchievementBlock struct {
+	Unknown1 uint32 `json:"unknown_1"`
+	TileType uint8  `json:"tile_type"`
+}
+
+type TileHearthMonitor struct {
+	Unknown1   uint32 `json:"unknown_1"`
+	PlayerName string `json:"player_name"`
+}
+
+type TileDonationBox struct {
+	Message1 string `json:"message_1"`
+	Message2 string `json:"message_2"`
+	Message3 string `json:"message_3"`
+	Unknown  uint8  `json:"unknown"`
+}
+
+type TileMannequin struct {
+	Text       string `json:"text"`
+	Unknown1   uint8  `json:"unknown_1"`
+	Clothing1  uint32 `json:"clothing_1"`
+	Clothing2  uint16 `json:"clothing_2"`
+	Clothing3  uint16 `json:"clothing_3"`
+	Clothing4  uint16 `json:"clothing_4"`
+	Clothing5  uint16 `json:"clothing_5"`
+	Clothing6  uint16 `json:"clothing_6"`
+	Clothing7  uint16 `json:"clothing_7"`
+	Clothing8  uint16 `json:"clothing_8"`
+	Clothing9  uint16 `json:"clothing_9"`
+	Clothing10 uint16 `json:"clothing_10"`
+}
+
+type TileBunnyEgg struct {
+	EggPlaced uint32 `json:"egg_placed"`
+}
+
+type TileGamePack struct {
+	Team uint8 `json:"team"`
+}
+
+type TileGameGenerator struct{}
+
+type TileXenoniteCrystal struct {
+	Unknown1 uint8  `json:"unknown_1"`
+	Unknown2 uint32 `json:"unknown_2"`
+}
+
+type TilePhoneBooth struct {
+	Clothing1 uint16 `json:"clothing_1"`
+	Clothing2 uint16 `json:"clothing_2"`
+	Clothing3 uint16 `json:"clothing_3"`
+	Clothing4 uint16 `json:"clothing_4"`
+	Clothing5 uint16 `json:"clothing_5"`
+	Clothing6 uint16 `json:"clothing_6"`
+	Clothing7 uint16 `json:"clothing_7"`
+	Clothing8 uint16 `json:"clothing_8"`
+	Clothing9 uint16 `json:"clothing_9"`
+}
+
+type TileCrystal struct {
+	Message string `json:"message"`
+}
+
+type TileCrimeInProgress struct {
+	Message  string `json:"message"`
+	Unknown2 uint32 `json:"unknown_2"`
+	Unknown3 uint8  `json:"unknown_3"`
+}
+
+type TileDisplayBlock struct {
+	ItemID uint32 `json:"item_id"`
+}
+
+type TileVendingMachine struct {
+	ItemID uint32 `json:"item_id"`
+	Price  int32  `json:"price"`
+}
+
+type FishInfo struct {
+	FishItemID uint32 `json:"fish_item_id"`
+	Lbs        uint32 `json:"lbs"`
+}
+
+type TileFishTankPort struct {
+	Flags  uint8      `json:"flags"`
+	Fishes []FishInfo `json:"fishes"`
+}
+
+type TileSolarCollector struct {
+	Unknown1 []uint8 `json:"unknown_1"`
+}
+
+type TileForge struct {
+	Temperature uint32 `json:"temperature"`
+}
+
+type TileGivingTree struct {
+	Unknown1 uint16 `json:"unknown_1"`
+	Unknown2 uint32 `json:"unknown_2"`
+}
+
+type TileSteamOrgan struct {
+	InstrumentType uint8  `json:"instrument_type"`
+	Note           uint32 `json:"note"`
+}
+
+type SilkWormColor struct {
+	A uint8 `json:"a"`
+	R uint8 `json:"r"`
+	G uint8 `json:"g"`
+	B uint8 `json:"b"`
+}
+
+type TileSilkWorm struct {
+	Type            uint8         `json:"type"`
+	Name            string        `json:"name"`
+	Age             uint32        `json:"age"`
+	Unknown1        uint32        `json:"unknown_1"`
+	Unknown2        uint32        `json:"unknown_2"`
+	CanBeFed        uint8         `json:"can_be_fed"`
+	FoodSaturation  uint32        `json:"food_saturation"`
+	WaterSaturation uint32        `json:"water_saturation"`
+	Color           SilkWormColor `json:"color"`
+	SickDuration    uint32        `json:"sick_duration"`
+}
+
+type TileSewingMachine struct {
+	BoltIDList []uint32 `json:"bolt_id_list"`
+}
+
+type TileCountryFlag struct {
+	Country string `json:"country"`
+}
+
+type TileLobsterTrap struct{}
+
+type TilePaintingEasel struct {
+	ItemID uint32 `json:"item_id"`
+	Label  string `json:"label"`
+}
+
+type PetBattleCageExtra struct {
+	Damage uint32   `json:"damage"`
+	Pet    []uint32 `json:"pet"`
+}
+
+type TilePetBattleCage struct {
+	Label    string             `json:"label"`
+	Unknown1 []uint8            `json:"unknown_1"`
+	Extra    PetBattleCageExtra `json:"extra"`
+}
+
+type TilePetTrainer struct {
+	Name          string   `json:"name"`
+	PetTotalCount uint32   `json:"pet_total_count"`
+	Unknown1      uint32   `json:"unknown_1"`
+	PetsID        []uint32 `json:"pets_id"`
+}
+
+type TileSteamEngine struct {
+	Temperature uint32 `json:"temperature"`
+}
+
+type TileLockBot struct {
+	TimePassed uint32 `json:"time_passed"`
+}
+
+type TileWeatherMachine struct {
+	Settings uint32 `json:"settings"`
+}
+
+type TileSpiritStorageUnit struct {
+	GhostJarCount uint32 `json:"ghost_jar_count"`
+}
+
+type TileDataBedrock struct{}
+
+type TileShelf struct {
+	TopLeftItemID     uint32 `json:"top_left_item_id"`
+	TopRightItemID    uint32 `json:"top_right_item_id"`
+	BottomLeftItemID  uint32 `json:"bottom_left_item_id"`
+	BottomRightItemID uint32 `json:"bottom_right_item_id"`
+}
+
+type TileVipEntrance struct {
+	Unknown1   uint8    `json:"unknown_1"`
+	OwnerUID   uint32   `json:"owner_uid"`
+	AccessUIDs []uint32 `json:"access_uids"`
+}
+
+type TileChallengeTimer struct{}
+
+type TileFishWallMount struct {
+	Label  string `json:"label"`
+	ItemID uint32 `json:"item_id"`
+	Lb     uint8  `json:"lb"`
+}
+
+type TilePortrait struct {
+	Label    string `json:"label"`
+	Unknown1 uint32 `json:"unknown_1"`
+	Unknown2 uint32 `json:"unknown_2"`
+	Unknown3 uint32 `json:"unknown_3"`
+	Unknown4 uint32 `json:"unknown_4"`
+	Face     uint32 `json:"face"`
+	Hat      uint32 `json:"hat"`
+	Hair     uint32 `json:"hair"`
+	Unknown5 uint16 `json:"unknown_5"`
+	Unknown6 uint16 `json:"unknown_6"`
+}
+
+type TileGuildWeatherMachine struct {
+	Unknown1 uint32 `json:"unknown_1"`
+	Gravity  uint32 `json:"gravity"`
+	Flags    uint8  `json:"flags"`
+}
+
+type TileFossilPrepStation struct {
+	Unknown1 uint32 `json:"unknown_1"`
+}
+
+type TileDnaExtractor struct{}
+type TileHowler struct{}
+
+type TileChemsynthTank struct {
+	CurrentChem uint32 `json:"current_chem"`
+	TargetChem  uint32 `json:"target_chem"`
+}
+
+type StorageBlockItemInfo struct {
+	ID     uint32 `json:"id"`
+	Amount uint32 `json:"amount"`
+}
+
+type TileStorageBlock struct {
+	Items []StorageBlockItemInfo `json:"items"`
+}
+
+type CookingOvenIngredientInfo struct {
+	ItemID    uint32 `json:"item_id"`
+	TimeAdded uint32 `json:"time_added"`
+}
+
+type TileCookingOven struct {
+	TemperatureLevel uint32                      `json:"temperature_level"`
+	Ingredients      []CookingOvenIngredientInfo `json:"ingredients"`
+	Unknown1         uint32                      `json:"unknown_1"`
+	Unknown2         uint32                      `json:"unknown_2"`
+	Unknown3         uint32                      `json:"unknown_3"`
+}
+
+type TileAudioRack struct {
+	Note   string `json:"note"`
+	Volume uint32 `json:"volume"`
+}
+
+type TileGeigerCharger struct {
+	SecondsFromStart  uint32 `json:"seconds_from_start"`
+	SecondsToComplete uint32 `json:"seconds_to_complete"`
+	ChargingPercent   uint32 `json:"charging_percent"`
+	MinutesFromStart  uint32 `json:"minutes_from_start"`
+	MinutesToComplete uint32 `json:"minutes_to_complete"`
+}
+
+type TileAdventureBegins struct{}
+type TileTombRobber struct{}
+
+type TileBalloonOMatic struct {
+	TotalRarity uint32 `json:"total_rarity"`
+	TeamType    uint8  `json:"team_type"`
+}
+
+type TileTrainingPort struct {
+	FishLb       uint32 `json:"fish_lb"`
+	FishStatus   uint16 `json:"fish_status"`
+	FishID       uint32 `json:"fish_id"`
+	FishTotalExp uint32 `json:"fish_total_exp"`
+	FishLevel    uint32 `json:"fish_level"`
+	Unknown2     uint32 `json:"unknown_2"`
+}
+
+type TileItemSucker struct {
+	ItemIDToSuck uint32 `json:"item_id_to_suck"`
+	ItemAmount   uint32 `json:"item_amount"`
+	Flags        uint16 `json:"flags"`
+	Limit        uint32 `json:"limit"`
+}
+
+type CyBotCommandData struct {
+	CommandID     uint32 `json:"command_id"`
+	IsCommandUsed uint32 `json:"is_command_used"`
+}
+
+type TileCyBot struct {
+	SyncTimer    uint32             `json:"sync_timer"`
+	Activated    uint32             `json:"activated"`
+	CommandDatas []CyBotCommandData `json:"command_datas"`
+}
+
+type TileGuildItem struct{}
+
+type TileGrowscan struct {
+	Unknown1 uint8 `json:"unknown_1"`
+}
+
+type TileContainmentFieldPowerNode struct {
+	GhostJarCount uint32   `json:"ghost_jar_count"`
+	Unknown1      []uint32 `json:"unknown_1"`
+}
+
+type TileSpiritBoard struct {
+	Unknown1 uint32 `json:"unknown_1"`
+	Unknown2 uint32 `json:"unknown_2"`
+	Unknown3 uint32 `json:"unknown_3"`
+}
+
+type TileStormyCloud struct {
+	StingDuration    uint32 `json:"sting_duration"`
+	IsSolid          uint32 `json:"is_solid"`
+	NonSolidDuration uint32 `json:"non_solid_duration"`
+}
+
+type TileTemporaryPlatform struct {
+	Unknown1 uint32 `json:"unknown_1"`
+}
+
+type TileSafeVault struct{}
+
+type TileAngelicCountingCloud struct {
+	IsRaffling uint32 `json:"is_raffling"`
+	Unknown1   uint16 `json:"unknown_1"`
+	AsciiCode  uint8  `json:"ascii_code"`
+}
+
+type TileInfinityWeatherMachine struct {
+	IntervalMinutes    uint32   `json:"interval_minutes"`
+	WeatherMachineList []uint32 `json:"weather_machine_list"`
+}
+
+type TilePineappleGuzzler struct{}
+
+type TileKrakenGalaticBlock struct {
+	PatternIndex uint8  `json:"pattern_index"`
+	Unknown1     uint32 `json:"unknown_1"`
+	R            uint8  `json:"r"`
+	G            uint8  `json:"g"`
+	B            uint8  `json:"b"`
+}
+
+type TileFriendsEntrance struct {
+	OwnerUserID uint32 `json:"owner_user_id"`
+	Unknown1    uint16 `json:"unknown_1"`
+	Unknown2    uint16 `json:"unknown_2"`
+}
+
+type TileTesseractManipulator struct {
+	Gems     uint32 `json:"gems"`
+	Unknown2 uint32 `json:"unknown_2"`
+	ItemID   uint32 `json:"item_id"`
+	Unknown4 uint32 `json:"unknown_4"`
 }
 
 type ServerLocal struct {
@@ -440,7 +989,7 @@ type Local struct {
 	Players        []Players   `json:"players"`
 	Inventory      []Inventory `json:"inventory"`
 	InventorySlots int         `json:"inventory_slots"`
-	World          World       `json:"-"`
+	World          World       `json:"world"`
 
 	Server         ServerLocal    `json:"server"`
 	BotLoginPacket BotLoginPacket `json:"bot_login_packet"`

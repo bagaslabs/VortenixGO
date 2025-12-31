@@ -38,6 +38,11 @@ func init() {
 	})
 }
 
+type QueuedPacket struct {
+	Data  []byte
+	Delay time.Duration
+}
+
 // Bot represents a single bot instance
 type Bot struct {
 	ID     string  `json:"id"`
@@ -76,13 +81,16 @@ type Bot struct {
 	Local     Local     `json:"local"`
 	CreatedAt time.Time `json:"created_at"`
 
+	LastPacketReceivedAt time.Time  `json:"-"`
+	Ping500StartedAt     *time.Time `json:"-"`
+
 	ItemDatabase *database.ItemDatabase `json:"-"`
 
 	// Concurrency control
 	mu           sync.Mutex
 	stop         chan struct{}
 	enetLoopDone chan struct{} // Signals that EventListener has exited
-	packetQueue  chan []byte
+	packetQueue  chan QueuedPacket
 
 	// Callbacks
 	OnDebug  func(category, message string, isError bool) `json:"-"`
@@ -158,7 +166,7 @@ func NewBot(id string, botType BotType, name string, password string, glog strin
 		Glog:         glog,
 		stop:         make(chan struct{}),
 		enetLoopDone: make(chan struct{}),
-		packetQueue:  make(chan []byte, 100),
+		packetQueue:  make(chan QueuedPacket, 100),
 		CreatedAt:    time.Now(),
 		ItemDatabase: GlobalItemDatabase,
 	}
@@ -300,4 +308,14 @@ func (b *Bot) Disconnect() {
 	close(b.stop) // Signal the event loop to stop
 	// Re-create the channel for next use, or handle differently
 	b.stop = make(chan struct{})
+}
+
+func (b *Bot) Say(text string) {
+	pkt := fmt.Sprintf("action|input\n|text|%s\n", text)
+	b.SendPacketWithDelay(pkt, NET_MESSAGE_GENERIC_TEXT, 2000*time.Millisecond)
+}
+
+func (b *Bot) Warp(world string) {
+	pkt := fmt.Sprintf("action|join_request\nname|%s\ninvitedWorld|0\n", world)
+	b.SendPacketWithDelay(pkt, NET_MESSAGE_GAME_MESSAGE, 4000*time.Millisecond)
 }

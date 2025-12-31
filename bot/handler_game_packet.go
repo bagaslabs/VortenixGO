@@ -10,14 +10,7 @@ import (
 	"vortenixgo/database"
 )
 
-func (b *Bot) SendPacketRaw(p *TankPacketStruct) {
-	// Construction: 4 byte type + 56 byte struct
-	data := make([]byte, 4+56)
-	binary.LittleEndian.PutUint32(data[:4], NET_MESSAGE_GAME_PACKET)
-	copy(data[4:], p.Serialize())
-
-	b.packetQueue <- data
-}
+// SendPacketRaw is now defined in enet_client.go
 
 func (b *Bot) handleGamePacket(ptr []byte) {
 	if len(ptr) < 56 {
@@ -119,7 +112,20 @@ func (b *Bot) handleGamePacket(ptr []byte) {
 	case NET_GAME_PACKET_MODIFY_ITEM_INVENTORY:
 		b.handleModifyInventory(&p)
 	case NET_GAME_PACKET_SEND_MAP_DATA:
-		// bot.local.world.parse(ptr + 56, packet->extDataSize - 56);
+		b.logENet("[SYSTEM]: Received world map data")
+		if p.ExtendedDataLength > 0 && len(ptr) >= 56 {
+			mapData := ptr[56:]
+			if err := b.ParseWorld(mapData); err != nil {
+				b.logENet(fmt.Sprintf("Failed to parse world: %v", err))
+			} else {
+				b.mu.Lock()
+				b.Status = "In World"
+				b.mu.Unlock()
+				if b.OnUpdate != nil {
+					b.OnUpdate()
+				}
+			}
+		}
 	case NET_GAME_PACKET_ITEM_CHANGE_OBJECT:
 		// UDP::ChangeItemObjects(ptr, bot);
 	case NET_GAME_PACKET_TILE_CHANGE_REQUEST:
@@ -128,8 +134,12 @@ func (b *Bot) handleGamePacket(ptr []byte) {
 		// UDP::OnTileTreeState(packet, bot);
 	case NET_GAME_PACKET_SEND_TILE_UPDATE_DATA:
 		// UDP::OnTileUpdateData(packet, ptr + 56, bot);
+	case NET_GAME_PACKET_NPC:
+		// Silently ignore for now
+	case NET_GAME_PACKET_PET_BATTLE:
+		// Silently ignore for now
 	default:
-		log.Printf("Unknown packet type: %s\n", b.convertTankPacketType(p.Type))
+		log.Printf("Unknown packet type: %s (%d)\n", b.convertTankPacketType(p.Type), p.Type)
 	}
 }
 

@@ -1,0 +1,48 @@
+/* Map Tooltip */
+.map-floating-tooltip {
+    position: fixed;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    color: white;
+    font-size: 0.85rem;
+    pointer-events: none;
+    /* Let mouse pass through */
+    z-index: 9999;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    min-width: 150px;
+    backdrop-filter: blur(4px);
+}
+
+.map-floating-tooltip.hidden {
+    display: none;
+}
+
+.tooltip-header {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.tooltip-row .label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.tooltip-row .val {
+    font-weight: 500;
+}
+
+.tooltip-row .val.dimmed {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+}

@@ -246,6 +246,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderInventory(bot);
         renderPlayers(bot);
+
+        // Update world map if on map tab
+        const mapTab = document.getElementById('tab-map');
+        if (mapTab && mapTab.classList.contains('active')) {
+            if (typeof renderWorldMap === 'function') renderWorldMap(bot);
+            if (typeof updateGrowscan === 'function') updateGrowscan(bot);
+        }
     }
 
     function renderPlayers(bot) {
@@ -407,6 +414,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-disconnect').onclick = () => {
         if (selectedBotId) socket.send(JSON.stringify({ type: 'BOT_ACTION', data: { id: selectedBotId, action: 'DISCONNECT' } }));
+    };
+
+    document.getElementById('btn-leave').onclick = () => {
+        if (selectedBotId) socket.send(JSON.stringify({ type: 'BOT_ACTION', data: { id: selectedBotId, action: 'LEAVE' } }));
+    };
+
+    document.getElementById('btn-warp').onclick = () => {
+        const world = document.getElementById('world-input').value;
+        if (selectedBotId && world) {
+            socket.send(JSON.stringify({ type: 'BOT_ACTION', data: { id: selectedBotId, action: 'WARP', world: world } }));
+        }
+    };
+
+    document.getElementById('btn-say').onclick = () => {
+        const text = document.getElementById('say-input').value;
+        if (selectedBotId && text) {
+            socket.send(JSON.stringify({ type: 'BOT_ACTION', data: { id: selectedBotId, action: 'SAY', text: text } }));
+            document.getElementById('say-input').value = '';
+        }
     };
 
     document.getElementById('detail-glog').oninput = () => debounceSave();
@@ -773,4 +799,418 @@ document.addEventListener('DOMContentLoaded', () => {
         const countEl = document.getElementById('db-total-items');
         if (countEl) countEl.textContent = (info.item_count || 0).toLocaleString();
     }
+
+    // ===== WORLD / MAP RENDERING =====
+    let currentZoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    // Interactive State
+    let activeWorld = null;
+    let hoveredTile = null;
+    const TOOLTIP_ID = 'map-tooltip';
+
+    // Global Constants for Rendering
+    const TILE_WIDTH = 8.5;
+    const TILE_HEIGHT = 6;
+
+    // Create Tooltip Element if not exists
+    let mapTooltip = document.getElementById(TOOLTIP_ID);
+    if (!mapTooltip) {
+        mapTooltip = document.createElement('div');
+        mapTooltip.id = TOOLTIP_ID;
+        mapTooltip.className = 'map-floating-tooltip hidden';
+        document.body.appendChild(mapTooltip);
+    }
+
+    function renderWorldMap(bot) {
+        if (!bot || !bot.local || !bot.local.world) return;
+
+        const world = bot.local.world;
+        if (!world.width || !world.height) return;
+
+        // Update active world reference
+        activeWorld = world;
+
+        // Update UI info
+        document.getElementById('world-name').textContent = world.name || 'EXIT';
+        document.getElementById('world-dimensions').textContent = `${world.width}x${world.height}`;
+        document.getElementById('world-tiles').textContent = `${world.tile_count || 0} tiles`;
+
+        drawMapCanvas();
+    }
+
+    function drawMapCanvas() {
+        const canvas = document.getElementById('world-canvas');
+        if (!canvas || !activeWorld) return;
+
+        const ctx = canvas.getContext('2d');
+
+        // Logical Size
+        const logicWidth = activeWorld.width * TILE_WIDTH;
+        const logicHeight = activeWorld.height * TILE_HEIGHT;
+
+        // Set Display Size (Canvas Resolution)
+        // We keep the internal resolution high enough for the zoom
+        canvas.width = logicWidth;
+        canvas.height = logicHeight;
+
+        // CSS handling is done via applyCanvasZoom transformation
+        // Clear
+        ctx.fillStyle = '#84C5E2'; // Sky Blue
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // --- Render Tiles ---
+        if (activeWorld.tiles) {
+            activeWorld.tiles.forEach(tile => {
+                const x = (tile.x || 0) * TILE_WIDTH;
+                const y = (tile.y || 0) * TILE_HEIGHT;
+
+                // 1. Background
+                if (tile.bg_id > 0) {
+                    const col = getTileColor(tile.bg_id);
+                    if (col) {
+                        ctx.fillStyle = col;
+                        ctx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
+                        // Darken BG
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                        ctx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
+                    }
+                }
+
+                // 2. Foreground
+                if (tile.fg_id > 0) {
+                    const col = getTileColor(tile.fg_id);
+                    if (col) {
+                        ctx.fillStyle = col;
+                        ctx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
+                    } else {
+                        // Default Unknown / Generic Block
+                        ctx.fillStyle = '#FF00FF'; // Debug Magenta for unknown
+                        // ctx.fillRect(x, y, TILE_WIDTH, TILE_HEIGHT);
+                    }
+                }
+            });
+        }
+
+        // --- Render Hover Highlight ---
+        if (hoveredTile) {
+            const hx = hoveredTile.x * TILE_WIDTH;
+            const hy = hoveredTile.y * TILE_HEIGHT;
+
+            // Brighten effect
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillRect(hx, hy, TILE_WIDTH, TILE_HEIGHT);
+
+            // Border
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(hx - 0.5, hy - 0.5, TILE_WIDTH + 1, TILE_HEIGHT + 1);
+        }
+
+        applyCanvasZoom();
+    }
+
+    // Manual Tile Color Mapping
+    const TILE_COLORS = {
+        0: '#84C5E2',   // Empty (Sky)
+        2: '#8B4513',  // Dirt (Brown)
+        3: '#8B4513', // Dirt Seed
+        4: '#fd8607',   // Lava
+        5: '#fd8607',   // Lava Seed
+        6: '#8a2be2',  // Main Door
+        8: '#222222',  // Bedrock
+        10: '#b9c2c6', // Rock
+        11: '#b9c2c6', // Rock Seed
+        12: '#864801', // Door
+        13: '#864801', // Door Seed
+        14: '#5e401b', // Cave background
+        15: '#5e401b', // Cave background Seed
+        20: '#efdec4', // Sign
+        22: '#654321', // Sign background (approx)
+        24: '#654321', // Super Sign
+        340: '#debc22', // Chandelier
+        341: '#debc22', // Chandelier Seed
+        5666: '#ff0000', // Laser grid
+        5667: '#ff0000', // Laser grid Seed
+        4584: '#00ff26', // Pepper tree
+        4585: '#00ff26', // Pepper tree Seed
+    };
+
+    function getTileColor(itemId) {
+        // 1. Check manual map
+        if (TILE_COLORS.hasOwnProperty(itemId)) {
+            return TILE_COLORS[itemId];
+        }
+
+        // 2. Check Item Cache (from Database)
+        const item = window.getItem(itemId);
+        if (item) {
+            if (item.BaseColor) {
+                const unsignedColor = item.BaseColor >>> 0;
+                let hexC = unsignedColor.toString(16).padStart(8, '0');
+                // Format usually AARRGGBB in memory, but HTML needs #RRGGBB
+                // Actually in GT it might be AABBGGRR or similar. Assuming ARGB or RGBA.
+                // Let's try standard interpretation.
+                // If it looks wrong, we fix it.
+                // Usually: 0xFFRRGGBB
+                const r = hexC.substring(2, 4);
+                const g = hexC.substring(4, 6);
+                const b = hexC.substring(6, 8);
+                return `#${r}${g}${b}`;
+            }
+        }
+
+        // 3. Fallback
+        return null;
+    }
+
+    function applyCanvasZoom() {
+        const canvas = document.getElementById('world-canvas');
+        if (!canvas) return;
+
+        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+        canvas.style.transformOrigin = 'top left';
+
+        document.getElementById('zoom-level').textContent = Math.round(currentZoom * 100) + '%';
+    }
+
+    // Zoom controls
+    document.getElementById('zoom-in')?.addEventListener('click', () => {
+        currentZoom = Math.min(currentZoom * 1.2, 5);
+        applyCanvasZoom();
+    });
+
+    document.getElementById('zoom-out')?.addEventListener('click', () => {
+        currentZoom = Math.max(currentZoom / 1.2, 0.5);
+        applyCanvasZoom();
+    });
+
+    document.getElementById('reset-view')?.addEventListener('click', () => {
+        currentZoom = 1;
+        panX = 0;
+        panY = 0;
+        applyCanvasZoom();
+    });
+
+    // Pan & Hover controls
+    const canvasContainer = document.querySelector('.canvas-container');
+
+    if (canvasContainer) {
+        canvasContainer.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left click to drag
+                isDragging = true;
+                dragStartX = e.clientX - panX;
+                dragStartY = e.clientY - panY;
+                canvasContainer.style.cursor = 'grabbing';
+            }
+        });
+
+        canvasContainer.addEventListener('mousemove', (e) => {
+            // Panning
+            if (isDragging) {
+                panX = e.clientX - dragStartX;
+                panY = e.clientY - dragStartY;
+                applyCanvasZoom();
+                return; // Don't process grid hover while dragging
+            }
+
+            // Hover Logic
+            if (!activeWorld) return;
+
+            const rect = canvasContainer.getBoundingClientRect();
+
+            // Calculate mouse position relative to the container/canvas
+            // Taking zoom and pan into account is tricky because 'transform' is CSS only.
+            // The mouse coordinates are relative to the viewport.
+            // visualX = mouseX - rect.left
+            // logicX = (visualX - panX) / currentZoom
+
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const logicX = (mouseX - panX) / currentZoom;
+            const logicY = (mouseY - panY) / currentZoom;
+
+            // Convert Logic coords to Tile coords
+            const tileX = Math.floor(logicX / TILE_WIDTH);
+            const tileY = Math.floor(logicY / TILE_HEIGHT);
+
+            // Check Bounds
+            if (tileX >= 0 && tileX < activeWorld.width && tileY >= 0 && tileY < activeWorld.height) {
+                // Optimized lookup: Tiles are sent in row-major order
+                const idx = tileX + tileY * activeWorld.width;
+                let tile = activeWorld.tiles[idx];
+
+                // Extra safety check in case of sparse or reordered array
+                if (!tile || (tile.x !== tileX || tile.y !== tileY)) {
+                    tile = activeWorld.tiles.find(t => t.x === tileX && t.y === tileY);
+                }
+
+                if (tile !== hoveredTile) {
+                    hoveredTile = tile; // Can be undefined if empty/air
+                    // Create minimal dummy tile if undefined (air)
+                    if (!hoveredTile) {
+                        hoveredTile = { x: tileX, y: tileY, fg_id: 0, bg_id: 0 };
+                    }
+                    drawMapCanvas(); // Re-render to show highlight
+                }
+
+                // Update Tooltip
+                updateTooltip(e, hoveredTile);
+            } else {
+                if (hoveredTile) {
+                    hoveredTile = null;
+                    drawMapCanvas();
+                    hideTooltip();
+                }
+            }
+        });
+
+        canvasContainer.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvasContainer.style.cursor = 'default';
+        });
+
+        canvasContainer.addEventListener('mouseleave', () => {
+            isDragging = false;
+            hoveredTile = null;
+            drawMapCanvas();
+            hideTooltip();
+        });
+    }
+
+    function updateTooltip(e, tile) {
+        if (!tile) return;
+
+        const fgItem = window.getItem(tile.fg_id);
+        const bgItem = window.getItem(tile.bg_id);
+
+        const fgName = fgItem ? fgItem.Name : (tile.fg_id === 0 ? "Empty" : `ID: ${tile.fg_id}`);
+        const bgName = bgItem ? bgItem.Name : (tile.bg_id === 0 ? "Empty" : `ID: ${tile.bg_id}`);
+
+        let html = `
+            <div class="tooltip-header"><i class="fa-solid fa-location-dot"></i> (${tile.x}, ${tile.y})</div>
+            <div class="tooltip-row"><span class="label">FG:</span> <span class="val">${fgName}</span></div>
+            <div class="tooltip-row"><span class="label">BG:</span> <span class="val">${bgName}</span></div>
+        `;
+
+        // Add Flags info or generic info
+        if (tile.flags) {
+            html += `<div class="tooltip-row"><span class="label">Flags:</span> <span class="val dimmed">${tile.flags}</span></div>`;
+        }
+
+        mapTooltip.innerHTML = html;
+        mapTooltip.classList.remove('hidden');
+
+        // Position info
+        const offset = 15;
+        // Keep within viewport
+        let top = e.clientY + offset;
+        let left = e.clientX + offset;
+
+        // Simple bounds check could go here
+
+        mapTooltip.style.top = `${top}px`;
+        mapTooltip.style.left = `${left}px`;
+    }
+
+    function hideTooltip() {
+        mapTooltip.classList.add('hidden');
+    }
+
+    // World tab switching
+    document.querySelectorAll('.world-tab-link').forEach(link => {
+        link.addEventListener('click', () => {
+            const targetTab = link.getAttribute('data-world-tab');
+
+            // Update active states
+            document.querySelectorAll('.world-tab-link').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.world-tab-pane').forEach(p => p.classList.remove('active'));
+
+            link.classList.add('active');
+            document.getElementById(targetTab)?.classList.add('active');
+        });
+    });
+
+    // Growscan functionality
+    function updateGrowscan(bot) {
+        if (!bot || !bot.local || !bot.local.world) return;
+
+        const world = bot.local.world;
+        const growscanList = document.getElementById('growscan-list');
+        const growscanCount = document.getElementById('growscan-count');
+
+        if (!growscanList || !world.tiles) return;
+
+        // Find harvestable tiles (seeds with time passed)
+        const harvestable = world.tiles.filter(tile => {
+            if (tile.fg_id === 0) return false;
+
+            const item = window.getItem(tile.fg_id);
+            if (!item) return false;
+
+            // Check if it's a seed and has grow time
+            if (tile.tile_type === 4 && tile.extra) {
+                if (tile.extra.ready_to_harvest) return true;
+                if (item.GrowTime > 0 && tile.extra.time_passed >= item.GrowTime) return true;
+            }
+            return false;
+        });
+
+        growscanCount.textContent = harvestable.length;
+
+        if (harvestable.length === 0) {
+            // ... (rest is same)
+            growscanList.innerHTML = `
+                <div style="padding: 40px; text-align: center; opacity: 0.5;">
+                    <i class="fa-solid fa-seedling" style="font-size: 48px; margin-bottom: 20px;"></i>
+                    <p>No harvestable tiles found</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Render harvestable tiles
+        growscanList.innerHTML = harvestable.map(tile => {
+            const item = window.getItem(tile.fg_id);
+            const itemName = item ? item.Name : `Item ${tile.fg_id}`;
+
+            return `
+                <div class="growscan-item">
+                    <div class="growscan-item-info">
+                        <div class="growscan-item-icon">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <div class="growscan-item-details">
+                            <h5>${itemName}</h5>
+                            <p>Position: (${tile.x}, ${tile.y})</p>
+                        </div>
+                    </div>
+                    <div class="growscan-item-actions">
+                        <button class="btn btn-sm success" onclick="harvestTile(${tile.x}, ${tile.y})">
+                            <i class="fa-solid fa-hand-sparkles"></i> Harvest
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Global function for harvest action
+    window.harvestTile = function (x, y) {
+        if (!selectedBotId) return;
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'BOT_ACTION',
+                bot_id: selectedBotId,
+                action: 'HARVEST_TILE',
+                data: { x, y }
+            }));
+        }
+    };
 });

@@ -219,6 +219,14 @@ func (c *Client) readPump() {
 					case "TRASH":
 						b.TrashItem(int32(itemID))
 					}
+				case "SAY":
+					text, _ := data["text"].(string)
+					b.Say(text)
+				case "WARP":
+					world, _ := data["world"].(string)
+					b.Warp(world)
+				case "LEAVE":
+					b.Warp("EXIT")
 				}
 			}
 		case "UPDATE_BOT_CONFIG":
