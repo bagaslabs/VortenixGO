@@ -111,9 +111,9 @@ func (g *GenerateLoginData) CreateLoginPacket(b *Bot) string {
 	defer b.Unlock()
 
 	var lp strings.Builder
-	lp.WriteString("tankIDName|\n")    // Force empty as requested
-	lp.WriteString("tankIDPass|\n")    // Force empty as requested
-	lp.WriteString("requestedName|\n") // Force empty as requested
+	lp.WriteString(fmt.Sprintf("tankIDName|%s\n", b.Login.TankIDName))
+	lp.WriteString(fmt.Sprintf("tankIDPass|%s\n", b.Login.TankIDPass))
+	lp.WriteString(fmt.Sprintf("requestedName|%s\n", b.Login.RequestedName))
 	lp.WriteString(fmt.Sprintf("f|%s\n", b.Login.F))
 	lp.WriteString(fmt.Sprintf("protocol|%s\n", b.Login.Protocol))
 	lp.WriteString(fmt.Sprintf("game_version|%s\n", b.Login.GameVersion))
@@ -145,7 +145,11 @@ func (g *GenerateLoginData) CreateLoginPacket(b *Bot) string {
 		if b.Login.DoorID != "" {
 			lp.WriteString(fmt.Sprintf("doorID|%s\n", b.Login.DoorID))
 		}
-		lp.WriteString(fmt.Sprintf("aat|%s", b.Login.Aat))
+		if b.Login.Aat != "" {
+			lp.WriteString(fmt.Sprintf("aat|%s\n", b.Login.Aat))
+		}
+	} else if b.Server.HTTPS.LToken != "" {
+		lp.WriteString(fmt.Sprintf("ltoken|%s\n", b.Server.HTTPS.LToken))
 	}
 
 	packet := lp.String()

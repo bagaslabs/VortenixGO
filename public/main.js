@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (s === 'online') badgeClass = 'online';
             else if (s.includes('connect') || s.includes('get')) badgeClass = 'warning';
-            else if (s === 'http_block') badgeClass = 'danger';
+            else if (s === 'http_block' || s === 'offline') badgeClass = 'danger';
 
             el.innerHTML = `
                 <div class="info">
@@ -203,19 +203,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const statusText = document.getElementById('detail-status-text');
         const statusDot = document.getElementById('status-dot');
+        const btnConnect = document.getElementById('btn-connect');
+        const btnDisconnect = document.getElementById('btn-disconnect');
+
         if (statusText && statusDot) {
             const currentStatus = bot.status || 'Idle';
             statusText.textContent = currentStatus;
             const s = currentStatus.toLowerCase();
+
+            // Connect is almost always enabled to allow "Force Connect/Reconnect"
+            btnConnect.disabled = false;
+            btnDisconnect.disabled = !bot.connected;
+
             if (s.includes('connect') || s.includes('get')) {
                 statusText.style.color = 'var(--warning)';
                 statusDot.className = 'status-dot warning';
+                btnDisconnect.disabled = false;
             } else if (s === 'online') {
                 statusText.style.color = 'var(--success)';
                 statusDot.className = 'status-dot online';
-            } else if (s === 'http_block') {
+                btnDisconnect.disabled = false;
+            } else if (s === 'http_block' || s === 'offline' || s === 'disconnected' || s === 'idle') {
                 statusText.style.color = 'var(--danger)';
                 statusDot.className = 'status-dot offline';
+                btnDisconnect.disabled = true;
+                if (s === 'idle') statusText.style.color = 'var(--text-muted)';
             } else {
                 statusText.style.color = 'var(--text-muted)';
                 statusDot.className = 'status-dot offline';
@@ -223,10 +235,148 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const devJson = document.getElementById('dev-internal-json');
-        if (devJson) devJson.textContent = JSON.stringify(bot, null, 4);
+        if (devJson) {
+            // Create a copy without inventory for display
+            const { local, ...rest } = bot;
+            const cleanLocal = { ...local };
+            delete cleanLocal.inventory;
+            const displayBot = { ...rest, local: cleanLocal };
+            devJson.textContent = JSON.stringify(displayBot, null, 4);
+        }
 
-        document.getElementById('btn-disconnect').disabled = !bot.connected;
+        renderInventory(bot);
+        renderPlayers(bot);
     }
+
+    function renderPlayers(bot) {
+        const countEl = document.getElementById('player-count');
+        const bodyEl = document.getElementById('player-list-body');
+
+        if (!countEl || !bodyEl) return;
+
+        const players = bot.local.players || [];
+        countEl.textContent = players.length;
+
+        bodyEl.innerHTML = '';
+        if (players.length === 0) {
+            bodyEl.innerHTML = '<tr><td colspan="2" class="text-center" style="padding: 40px; opacity: 0.5;">No players in range</td></tr>';
+            return;
+        }
+
+        players.forEach(p => {
+            const row = document.createElement('tr');
+            row.className = 'inv-row';
+
+            const leftCell = document.createElement('td');
+            leftCell.className = 'inv-info-cell';
+            leftCell.innerHTML = `
+                <div style="display: flex; flex-direction: column;">
+                    <span class="inv-name" style="color: ${p.is_local ? 'var(--primary)' : 'white'}; font-weight: 500;">
+                        ${p.name}
+                        ${p.is_local ? '<span style="color: var(--primary); opacity: 0.8; font-size: 0.8em; margin-left: 5px;">(YOU)</span>' : ''}
+                        ${p.mod ? '<span style="color: var(--danger); opacity: 0.8; font-size: 0.8em; margin-left: 5px;">[MOD]</span>' : ''}
+                    </span>
+                    <span style="font-size: 0.75em; opacity: 0.5; margin-top: 2px;">NetID: ${p.netid} • UserID: ${p.userid}</span>
+                </div>
+            `;
+
+            const rightCell = document.createElement('td');
+            rightCell.className = 'inv-action-cell';
+            rightCell.style.textAlign = 'right';
+            rightCell.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                    <span style="font-size: 0.9em;">${p.country || 'Unknown'}</span>
+                    <span style="font-size: 0.75em; opacity: 0.5; margin-top: 2px; font-family: monospace;">
+                        X: ${Math.round(p.pos_x || 0)} Y: ${Math.round(p.pos_y || 0)}
+                    </span>
+                </div>
+            `;
+
+            row.appendChild(leftCell);
+            row.appendChild(rightCell);
+            bodyEl.appendChild(row);
+        });
+    }
+
+    function renderInventory(bot) {
+        const slotsEl = document.getElementById('inv-slots');
+        const amountEl = document.getElementById('inv-amount');
+        const bodyEl = document.getElementById('inventory-body');
+
+        if (!slotsEl || !bodyEl) return;
+
+        const inv = bot.local.inventory || [];
+        const maxSlots = bot.local.inventory_slots || 0;
+
+        slotsEl.innerHTML = `<span class="stat-value">${inv.length}</span><span style="opacity: 0.5; margin: 0 4px;">/</span><span class="stat-value" style="opacity: 0.7;">${maxSlots}</span>`;
+        amountEl.innerHTML = `<span class="stat-value" style="color: var(--warning);">${(bot.local.gem_count || 0).toLocaleString()}</span>`;
+
+        bodyEl.innerHTML = '';
+        if (inv.length === 0) {
+            bodyEl.innerHTML = '<tr><td colspan="2" class="text-center" style="padding: 40px; opacity: 0.5;">Inventory is empty</td></tr>';
+            return;
+        }
+
+        inv.forEach((item) => {
+            const row = document.createElement('tr');
+            row.className = 'inv-row';
+
+            // Try to get name and info from cache
+            const dbItem = window.getItem(item.id);
+            const name = item.name || (dbItem ? dbItem.Name : `Item`);
+            const clothingType = dbItem ? dbItem.ClothingType : 0;
+            const isWearable = clothingType !== 0;
+
+            // Button Logic
+            let buttonsHtml = '';
+
+            // Wear/Unwear (Only if wearable)
+            if (isWearable) {
+                if (item.is_active) {
+                    buttonsHtml += `<button class="inv-list-btn unwear" onclick="window.handleInventoryAction('${bot.id}', ${item.id}, 'UNWEAR')">Unwear</button>`;
+                } else {
+                    buttonsHtml += `<button class="inv-list-btn wear" onclick="window.handleInventoryAction('${bot.id}', ${item.id}, 'WEAR')">Wear</button>`;
+                }
+            }
+
+            // Drop & Trash (Skip for Fist/Wrench for safety/aesthetics, though user asked for "every item". 
+            // Image shows Trash for Fist but not Drop. I will just render them for standard items.)
+            // IDs: 18=Fist, 32=Wrench
+            if (item.id !== 18 && item.id !== 32) {
+                buttonsHtml += `<button class="inv-list-btn drop" onclick="window.handleInventoryAction('${bot.id}', ${item.id}, 'DROP')">Drop</button>`;
+            }
+            buttonsHtml += `<button class="inv-list-btn trash" onclick="window.handleInventoryAction('${bot.id}', ${item.id}, 'TRASH')">Trash</button>`;
+
+
+            row.innerHTML = `
+                <td class="inv-info-cell">
+                    <span class="inv-count">${item.count}x</span>
+                    <span class="inv-sep">|</span>
+                    <span class="inv-name">${name} [${item.id}]</span>
+                    ${item.is_active ? '<span class="inv-equipped">(Equipped)</span>' : ''}
+                </td>
+                <td class="inv-action-cell">
+                    ${buttonsHtml}
+                </td>
+            `;
+            bodyEl.appendChild(row);
+        });
+    }
+
+    window.handleInventoryAction = (botId, itemId, action) => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+        console.log(`[Inventory] Action ${action} for Item ${itemId} on Bot ${botId}`);
+        socket.send(JSON.stringify({
+            type: 'BOT_ACTION',
+            data: {
+                id: botId,
+                action: 'INVENTORY_ACTION',
+                sub_action: action,
+                item_id: itemId
+            }
+        }));
+    };
 
     // --- Event Listeners (Once) ---
     document.querySelectorAll('.nav-item').forEach(item => {

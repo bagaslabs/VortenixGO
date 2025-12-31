@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
+	"vortenixgo/database"
 	"vortenixgo/network/enet"
 )
 
@@ -16,82 +18,24 @@ const (
 	BotTypeApple  BotType = "apple"  // Uses Token
 )
 
-// HttpsConfig corresponds to Server_Info::Https
-type HttpsConfig struct {
-	LoginFormURL       string `json:"login_url"`
-	FormToken          string `json:"form_token"`
-	CookieVisit        string `json:"cookie_visit"`
-	CookieActivity     string `json:"cookie_activity"`
-	CookieAWSALBTG     string `json:"cookie_aws_albtg"`
-	CookieAWSALBTGCORS string `json:"cookie_aws_albtg_cors"`
-	CookieAWSALB       string `json:"cookie_aws_alb"`
-	CookieAWSALBCORS   string `json:"cookie_aws_alb_cors"`
-	CookieXSRF         string `json:"cookie_xsrf"`
-	CookieGameSession  string `json:"cookie_game_session"`
-	StatusToken        string `json:"status_token"`
-	LToken             string `json:"ltoken"`
-}
-
-// EnetConfig corresponds to Server_Info::Enet
-type EnetConfig struct {
-	ServerIP         string `json:"server_ip"`
-	ServerPort       int    `json:"server_port"`
-	SubServerIP      string `json:"sub_server_ip"`
-	SubServerPort    int    `json:"sub_server_port"`
-	NowConnectedIP   string `json:"connected_ip"`
-	NowConnectedPort int    `json:"connected_port"`
-}
-
-// ServerInfo wraps HTTPS and Enet configurations
-type ServerInfo struct {
-	HTTPS HttpsConfig `json:"https"`
-	Enet  EnetConfig  `json:"enet"`
-}
-
-// LoginPacket corresponds to the massive Login_Packet struct
-type LoginPacket struct {
-	TankIDName    string `json:"tank_id_name"`
-	TankIDPass    string `json:"tank_id_pass"`
-	RequestedName string `json:"requested_name"`
-	F             string `json:"f" default:"1"`
-	Protocol      string `json:"protocol"`
-	GameVersion   string `json:"game_version"`
-	Fz            string `json:"fz"`
-	Cbits         string `json:"cbits" default:"1024"`
-	PlayerAge     string `json:"player_age" default:"17"`
-	GDPR          string `json:"gdpr" default:"2"`
-	FCMToken      string `json:"fcm_token"`
-	Category      string `json:"category" default:"_-5100"`
-	TotalPlaytime string `json:"total_playtime" default:"0"`
-	Klv           string `json:"klv"`
-	Hash2         string `json:"hash2"`
-	Meta          string `json:"meta"`
-	FHash         string `json:"fhash" default:"-716928004"`
-	Rid           string `json:"rid"`
-	PlatformID    string `json:"platform_id" default:"0,1,1"`
-	DeviceVersion string `json:"device_version" default:"0"`
-	Country       string `json:"country" default:"id"`
-	Hash          string `json:"hash"`
-	Mac           string `json:"mac"`
-	Wk            string `json:"wk"`
-	Zf            string `json:"zf"`
-	LMode         string `json:"lmode" default:"1"`
-
-	// Subserver / Session fields
-	User      string `json:"user"`
-	UserToken string `json:"user_token"`
-	UUIDToken string `json:"uuid_token"`
-	DoorID    string `json:"door_id"`
-	Aat       string `json:"aat" default:"2"`
-	LoginPkt  string `json:"login_packet"` // Raw String if needed
-}
-
 // ExternalAuth holds 3rd party auth info
 type ExternalAuth struct {
 	IP           string `json:"ip"`
 	Port         int    `json:"port"`
 	AccessKey    string `json:"access_key"`
 	UseForGoogle bool   `json:"use_for_google" default:"true"`
+}
+
+var (
+	GlobalItemDatabase *database.ItemDatabase
+	GlobalItemsDatHash uint32
+	itemDatabaseOnce   sync.Once
+)
+
+func init() {
+	itemDatabaseOnce.Do(func() {
+		GlobalItemDatabase = database.NewItemDatabase()
+	})
 }
 
 // Bot represents a single bot instance
@@ -108,8 +52,8 @@ type Bot struct {
 	Age      int    `json:"age"` // In days
 
 	// Authentication & Connection Data
-	Login        LoginPacket  `json:"login_data"`
-	Server       ServerInfo   `json:"server_info"`
+	Login        *LoginPacket `json:"-"`
+	Server       *ServerInfo  `json:"-"`
 	ExternalAuth ExternalAuth `json:"external_auth"`
 
 	// State
@@ -129,12 +73,20 @@ type Bot struct {
 	Ping     int  `json:"ping"`
 	ShowENet bool `json:"show_enet"`
 
+	Local     Local     `json:"local"`
+	CreatedAt time.Time `json:"created_at"`
+
+	ItemDatabase *database.ItemDatabase `json:"-"`
+
 	// Concurrency control
-	mu   sync.Mutex
-	stop chan struct{}
+	mu           sync.Mutex
+	stop         chan struct{}
+	enetLoopDone chan struct{} // Signals that EventListener has exited
+	packetQueue  chan []byte
 
 	// Callbacks
-	OnDebug func(category, message string, isError bool) `json:"-"`
+	OnDebug  func(category, message string, isError bool) `json:"-"`
+	OnUpdate func()                                       `json:"-"`
 }
 
 func (b *Bot) Lock() {
@@ -145,14 +97,72 @@ func (b *Bot) Unlock() {
 	b.mu.Unlock()
 }
 
+func (b *Bot) GetElapsedMS() uint32 {
+	return uint32(time.Since(b.CreatedAt).Milliseconds())
+}
+
+func (b *Bot) ResetEnetData() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// 1. Clear Network Config & Tokens
+	b.Server.Enet = EnetConfig{} // Resets all fields to zero-value (empty strings, 0 ints)
+	b.Login.User = ""
+	b.Login.UserToken = ""
+	b.Login.UUIDToken = ""
+	b.Login.DoorID = ""
+
+	// 2. Clear Local Player Attributes
+	b.Local.Country = ""
+	b.Local.UserID = 0
+	b.Local.NetID = -1 // -1 usually indicates no ID
+	b.Local.EID = ""
+	b.Local.IP = ""
+
+	// 3. Clear Position & Movement
+	b.Local.PosX = 0
+	b.Local.PosY = 0
+	b.Local.SpeedX = 0
+	b.Local.SpeedY = 0
+
+	// 4. Clear Items & Inventory
+	b.Local.ActiveItems = []int{}
+	b.Local.Inventory = []Inventory{}
+	b.Local.InventorySlots = 0
+
+	// 5. Clear Currencies & Stats
+	b.Local.GemCount = 0
+	b.Local.PearlCount = 0
+	b.Local.VoucherCount = 0
+	b.Local.Awesomeness = 0
+	b.Local.GlobalPlaytime = 0
+	b.Local.WorldLock = 0
+	b.Local.TotalPlaytime = 0
+	b.Local.FavoriteItems = []int{}
+	b.Local.FavoriteItemsSlot = 0
+
+	// 6. Clear World & Others
+	b.Local.World = World{}
+	b.Local.Players = []Players{} // Clear player list
+
+	b.World = ""
+	b.Connected = false
+	b.Status = "Idle"
+}
+
 func NewBot(id string, botType BotType, name string, password string, glog string) *Bot {
 	bot := &Bot{
-		ID:     id,
-		Type:   botType,
-		Status: "Idle",
-		Glog:   glog,
-		stop:   make(chan struct{}),
+		ID:           id,
+		Type:         botType,
+		Status:       "Idle",
+		Glog:         glog,
+		stop:         make(chan struct{}),
+		enetLoopDone: make(chan struct{}),
+		packetQueue:  make(chan []byte, 100),
+		CreatedAt:    time.Now(),
+		ItemDatabase: GlobalItemDatabase,
 	}
+	close(bot.enetLoopDone) // Start as "dead" so ConnectClient knows to start listener
 
 	// Parse Glog string if provided: ip:port:accessKey
 	if glog != "" {
@@ -166,7 +176,10 @@ func NewBot(id string, botType BotType, name string, password string, glog strin
 	}
 
 	// Initialize LoginPacket with defaults
-	bot.Login = LoginPacket{
+	bot.Login = &bot.Local.Login
+	bot.Server = &bot.Local.ServerInfo
+
+	*bot.Login = LoginPacket{
 		F:             "1",
 		Protocol:      "225",
 		GameVersion:   "5.39",
@@ -223,7 +236,7 @@ func NewBot(id string, botType BotType, name string, password string, glog strin
 		bot.DisplayName = name
 		bot.Login.TankIDName = name
 		bot.Login.TankIDPass = password
-		bot.Login.RequestedName = "" // As requested, empty for legacy too? Or just Gmail? User said "Requested Name empty... also tank_id_pass empty".
+		bot.Login.RequestedName = ""
 		// Wait, if it's Legacy, we NEED tank_id_pass to login usually.
 		// User said "Saya ingin requested Name nya empty... begitu juga dengan tank_id_pass empty."
 		// If this applies to ALL bots, then legacy won't work without pass.
@@ -275,12 +288,15 @@ func (b *Bot) Disconnect() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if !b.Connected {
-		return
-	}
-
 	b.Status = "Idle"
 	b.Connected = false
+
+	// Safely close stop channel
+	defer func() {
+		if r := recover(); r != nil {
+			// Ignore if already closed
+		}
+	}()
 	close(b.stop) // Signal the event loop to stop
 	// Re-create the channel for next use, or handle differently
 	b.stop = make(chan struct{})

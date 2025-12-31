@@ -23,12 +23,13 @@ var upgrader = websocket.Upgrader{
 
 // Hub maintains the set of active clients and broadcasts messages to the clients.
 type Hub struct {
-	clients    map[*Client]bool
-	broadcast  chan []byte
-	register   chan *Client
-	unregister chan *Client
-	mu         sync.Mutex
-	OnConnect  func(*bot.Bot, *Hub)
+	clients      map[*Client]bool
+	broadcast    chan []byte
+	register     chan *Client
+	unregister   chan *Client
+	mu           sync.Mutex
+	OnConnect    func(*bot.Bot, *Hub)
+	OnDisconnect func(*bot.Bot, *Hub)
 }
 
 var GlobalHub *Hub
@@ -201,8 +202,23 @@ func (c *Client) readPump() {
 						c.hub.BroadcastBotUpdate()
 					}
 				case "DISCONNECT":
-					b.Disconnect()
-					c.hub.BroadcastBotUpdate()
+					if c.hub.OnDisconnect != nil {
+						c.hub.OnDisconnect(b, c.hub)
+					} else {
+						b.Disconnect()
+						c.hub.BroadcastBotUpdate()
+					}
+				case "INVENTORY_ACTION":
+					subAction, _ := data["sub_action"].(string)
+					itemID, _ := data["item_id"].(float64)
+					switch subAction {
+					case "WEAR", "UNWEAR":
+						b.WearItem(int32(itemID))
+					case "DROP":
+						b.DropItem(int32(itemID))
+					case "TRASH":
+						b.TrashItem(int32(itemID))
+					}
 				}
 			}
 		case "UPDATE_BOT_CONFIG":
@@ -315,6 +331,12 @@ func (c *Client) handleGetDatabaseInfo() {
 }
 
 func (c *Client) sendItemResponse(item *database.Item) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in sendItemResponse: %v", r)
+		}
+	}()
+
 	if item == nil {
 		c.sendError("Item not found")
 		return
@@ -325,7 +347,16 @@ func (c *Client) sendItemResponse(item *database.Item) {
 		"data": item,
 	}
 	data, _ := json.Marshal(msg)
-	c.send <- data
+
+	// Use non-blocking send or verify safety
+	select {
+	case c.send <- data:
+	default:
+		// Channel might be full or closed logic handled by recover if closed?
+		// Actually select default won't catch closed, it catches full.
+		// Send on closed panics.
+		// Recover is the safest quick fix.
+	}
 }
 
 func (c *Client) sendItemsResponse(items []*database.Item) {

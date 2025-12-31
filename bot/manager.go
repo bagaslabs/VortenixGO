@@ -53,7 +53,8 @@ func (m *Manager) RemoveBot(id string) error {
 		return fmt.Errorf("bot not found")
 	}
 
-	bot.Disconnect() // Ensure it stops running
+	bot.DisconnectClient() // Stop ENet and EventListener
+	bot.Disconnect()       // Stop general bot loop
 	delete(m.Bots, id)
 	log.Printf("[BotManager] Removed bot ID: %s. Remaining: %d", id, len(m.Bots))
 	return nil

@@ -26,6 +26,7 @@ func main() {
 	// Initialize WS Hub
 	hub := ws.NewHub()
 	hub.OnConnect = HandleBotConnect
+	hub.OnDisconnect = HandleBotDisconnect
 	go hub.Run()
 
 	// Serve Static Files

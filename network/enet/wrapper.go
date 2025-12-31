@@ -26,6 +26,18 @@ void enet_host_use_proxy_helper(ENetHost* host, const char* ip, int port, const 
     enet_host_use_proxy(host, ip, (uint16_t)port, user, pass);
 }
 
+// Helper to set max packet size and waiting data
+void enet_host_set_max_packet_limits(ENetHost* host, size_t size) {
+    host->maximumPacketSize = size;
+    host->maximumWaitingData = size * 2;
+}
+
+// Helper to set socket buffers
+void enet_host_set_socket_buffers(ENetHost* host, size_t rcv, size_t snd) {
+    enet_socket_set_option(host->socket, ENET_SOCKOPT_RCVBUF, rcv);
+    enet_socket_set_option(host->socket, ENET_SOCKOPT_SNDBUF, snd);
+}
+
 // Global initialization helper
 void enet_initialize_helper() {
     enet_initialize();
@@ -140,6 +152,18 @@ func (h *Host) SetProxy(ip string, port int, user string, pass string) {
 	}
 }
 
+func (h *Host) SetMaxPacketLimits(size int) {
+	if h.cHost != nil {
+		C.enet_host_set_max_packet_limits(h.cHost, C.size_t(size))
+	}
+}
+
+func (h *Host) SetSocketBuffers(rcv, snd int) {
+	if h.cHost != nil {
+		C.enet_host_set_socket_buffers(h.cHost, C.size_t(rcv), C.size_t(snd))
+	}
+}
+
 func (h *Host) Connect(address *Address, channelCount int, data uint32) *Peer {
 	if h.cHost == nil || address == nil {
 		return nil
@@ -155,6 +179,18 @@ func (h *Host) Flush() {
 	if h.cHost != nil {
 		C.enet_host_flush(h.cHost)
 	}
+}
+
+func (p *Peer) Send(channelID uint8, data []byte, flags uint32) int {
+	if p.cPeer == nil {
+		return -1
+	}
+	var ptr unsafe.Pointer
+	if len(data) > 0 {
+		ptr = unsafe.Pointer(&data[0])
+	}
+	packet := C.enet_packet_create(ptr, C.size_t(len(data)), C.enet_uint32(flags))
+	return int(C.enet_peer_send(p.cPeer, C.enet_uint8(channelID), packet))
 }
 
 func (p *Peer) Disconnect(data uint32) {

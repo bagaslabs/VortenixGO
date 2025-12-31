@@ -9,21 +9,19 @@ import (
 
 // Orchestrator handles high-level bot actions to avoid circular imports
 func HandleBotConnect(b *bot.Bot, hub *ws.Hub) {
+	b.DisconnectClient() // Force hard stop of any old session
+	b.ResetEnetData()
+	b.OnUpdate = hub.BroadcastBotUpdate
+
 	go func() {
 		b.Lock()
-		if b.Connected {
-			b.Unlock()
-			b.Disconnect() // Stop previous connection if any
-		} else {
-			b.Unlock()
-		}
+		b.Status = "Connecting..."
+		b.Connected = true
+		b.Unlock()
+		hub.BroadcastBotUpdate()
 
 		b.Lock()
 		b.Status = "Getting Server Address"
-		// Reset previous server data to ensure fresh start
-		b.Server.Enet.ServerIP = ""
-		b.Server.Enet.ServerPort = 0
-		b.Login.Meta = ""
 		b.Unlock()
 		hub.BroadcastBotUpdate()
 
@@ -74,31 +72,33 @@ func HandleBotConnect(b *bot.Bot, hub *ws.Hub) {
 					if err := handleGlogFlow(b, handler, hub); err != nil {
 						return
 					}
+					// Setelah Glog Flow berhasil, lanjut ke ConnectClient
+				} else {
+					return
 				}
-				return
+			} else {
+				log.Printf("[Orchestrator][%s] Token Validated: %s", b.Name, newToken)
+				hub.BroadcastBotUpdate()
 			}
-
-			log.Printf("[Orchestrator][%s] Token Validated: %s", b.Name, newToken)
-			hub.BroadcastBotUpdate()
 		} else {
 			// No token: Get Dashboard/Form URL first
 			if err := handleGlogFlow(b, handler, hub); err != nil {
 				return
 			}
-
-			// If it's legacy, it might continue to connect,
-			// but for Gmail/Apple it usually stops at "Awaiting Glog"
-			if b.Type == bot.BotTypeGmail || b.Type == bot.BotTypeApple {
-				return
-			}
 		}
 		b.ConnectClient()
-		b.EventListener()
 		// 6. Final Connection State
 		hub.BroadcastBotUpdate()
 
 		// 3. Start ENet event loop
 	}()
+}
+
+func HandleBotDisconnect(b *bot.Bot, hub *ws.Hub) {
+	b.DisconnectClient()
+	b.Disconnect()
+	b.ResetEnetData()
+	hub.BroadcastBotUpdate()
 }
 
 func handleGlogFlow(b *bot.Bot, handler *network.HTTPHandler, hub *ws.Hub) error {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VortenixGO | Agentic Bot Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=2">
     <link
         href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap"
         rel="stylesheet">
@@ -245,6 +245,7 @@
                                     <button class="tab-link" data-tab="tab-executor">Executor</button>
                                     <button class="tab-link" data-tab="tab-inventory">Inventory</button>
                                     <button class="tab-link" data-tab="tab-map">Map</button>
+                                    <button class="tab-link" data-tab="tab-players">Players</button>
                                     <button class="tab-link" data-tab="tab-debug">Debug</button>
                                     <button class="tab-link" data-tab="tab-developer">Developer</button>
                                 </div>
@@ -268,7 +269,60 @@
                                         <div class="placeholder-content">Map Grid</div>
                                     </div>
                                     <div id="tab-inventory" class="tab-pane">
-                                        <div class="placeholder-content">Inventory Grid</div>
+                                        <div class="inventory-header">
+                                            <div class="header-stat">
+                                                <div class="stat-label">
+                                                    <i class="fa-solid fa-box-open"></i>
+                                                    <span>Inventory Slots</span>
+                                                </div>
+                                                <div id="inv-slots" class="stat-value">0 / 0</div>
+                                            </div>
+                                            <div class="header-stat">
+                                                <div class="stat-label">
+                                                    <i class="fa-solid fa-coins"></i>
+                                                    <span>Gems Amount</span>
+                                                </div>
+                                                <div id="inv-amount" class="stat-value">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="inventory-table-container">
+                                            <table class="inventory-table">
+                                                <tbody id="inventory-body">
+                                                    <!-- Item rows injected here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div id="tab-map" class="tab-pane">
+                                        <div style="padding: 40px; text-align: center; opacity: 0.5;">
+                                            <i class="fa-solid fa-map"
+                                                style="font-size: 48px; margin-bottom: 20px;"></i>
+                                            <p>Map View Coming Soon</p>
+                                        </div>
+                                    </div>
+                                    <div id="tab-players" class="tab-pane">
+                                        <div class="inventory-table-container">
+                                            <div class="inventory-header sticky-header">
+                                                <div class="header-title">
+                                                    <i class="fa-solid fa-users"></i>
+                                                    <span>Players</span>
+                                                </div>
+                                                <div class="header-stats">
+                                                    <div class="stat-item">
+                                                        <span class="stat-label">Count</span>
+                                                        <span class="stat-value" id="player-count">0</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <table class="inventory-table">
+                                                <!-- No thead as requested for list look, or maybe user wants headers for players? 
+                                                     User said "menampilkan data player". A list view similar to inventory is safe. 
+                                                     But players usually need columns. I'll use a hidden header list style. -->
+                                                <tbody id="player-list-body">
+                                                    <!-- Player Rows -->
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                     <div id="tab-debug" class="tab-pane">
                                         <div class="debug-toolbar">

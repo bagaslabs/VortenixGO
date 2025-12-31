@@ -918,6 +918,155 @@ textarea:focus {
     font-size: 0.9rem;
 }
 
+/* Inventory Hub Styles (Premium Revamp) */
+.inventory-header {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.header-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.header-stat .stat-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.header-stat .stat-label i {
+    color: var(--primary);
+}
+
+.header-stat .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+    font-family: 'Outfit', sans-serif;
+}
+
+.inventory-table-container {
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Hide Table Header if we are going for pure list look, or keep it simple */
+.inventory-table thead {
+    display: none;
+}
+
+.inv-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(15, 23, 42, 0.6);
+}
+
+.inv-row:hover {
+    background: rgba(30, 41, 59, 0.8);
+}
+
+.inv-info-cell {
+    padding: 10px 15px;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.inv-count {
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    color: #94a3b8;
+    /* Muted count color */
+    min-width: 30px;
+    text-align: right;
+}
+
+.inv-sep {
+    color: #475569;
+    font-weight: 300;
+}
+
+.inv-name {
+    color: #f1f5f9;
+    font-weight: 500;
+}
+
+.inv-equipped {
+    font-size: 0.75rem;
+    color: var(--success);
+    margin-left: 8px;
+    font-style: italic;
+}
+
+.inv-action-cell {
+    padding: 8px 15px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.inv-list-btn {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all 0.2s;
+}
+
+.inv-list-btn:hover {
+    background: #1e293b;
+    border-color: #475569;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* Button Variants */
+.inv-list-btn.wear {
+    /* Default dark style is fine, maybe slight blue tint */
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.inv-list-btn.unwear {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--warning);
+}
+
+.inv-list-btn.drop:hover {
+    border-color: rgba(16, 185, 129, 0.5);
+    color: var(--success);
+}
+
+.inv-list-btn.trash:hover {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: var(--danger);
+}
+
 .radio-card:has(input:checked) {
     border-color: var(--primary);
     background: rgba(99, 102, 241, 0.1);
